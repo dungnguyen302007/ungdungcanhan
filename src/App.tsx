@@ -29,7 +29,7 @@ function App() {
 
   if (!userId) {
     return (
-      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-[#FFF5F7] via-[#FFFDFD] to-[#FDF2F8] flex items-center justify-center p-4">
         <Login />
         <Toaster position="top-center" />
       </div>
