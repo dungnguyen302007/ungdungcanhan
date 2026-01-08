@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { type Transaction, type Category, DEFAULT_CATEGORIES } from '../types';
+import { type Transaction, type Category, DEFAULT_CATEGORIES, type AppNotification } from '../types';
 import { db } from '../lib/firebase';
 import { collection, doc, setDoc, deleteDoc, updateDoc, getDocs, query, orderBy } from 'firebase/firestore';
 
@@ -8,6 +8,8 @@ interface AppState {
     transactions: Transaction[];
     categories: Category[];
     userId: string | null;
+    notifications: AppNotification[];
+    lastWeatherNotificationDate: string | null;
     setUserId: (id: string | null) => void;
 
     fetchTransactions: () => Promise<void>;
@@ -18,6 +20,10 @@ interface AppState {
 
     addCategory: (category: Category) => void;
     resetData: () => void;
+
+    addNotification: (notification: AppNotification) => void;
+    markNotificationAsRead: (id: string) => void;
+    clearNotifications: () => void;
 }
 
 export const useStore = create<AppState>()(
@@ -26,6 +32,8 @@ export const useStore = create<AppState>()(
             transactions: [],
             categories: DEFAULT_CATEGORIES,
             userId: null,
+            notifications: [],
+            lastWeatherNotificationDate: null,
 
             setUserId: (id) => set({ userId: id }),
 
@@ -101,15 +109,37 @@ export const useStore = create<AppState>()(
                 set((state) => ({ categories: [...state.categories, category] })),
 
             resetData: () => set({ transactions: [], categories: DEFAULT_CATEGORIES }),
+
+            addNotification: (notification) => {
+                set((state) => {
+                    const newState = {
+                        notifications: [notification, ...state.notifications]
+                    };
+                    if (notification.type === 'weather') {
+                        return { ...newState, lastWeatherNotificationDate: notification.date.split('T')[0] };
+                    }
+                    return newState;
+                });
+            },
+
+            markNotificationAsRead: (id) => {
+                set((state) => ({
+                    notifications: state.notifications.map((n) =>
+                        n.id === id ? { ...n, isRead: true } : n
+                    )
+                }));
+            },
+
+            clearNotifications: () => set({ notifications: [] }),
         }),
         {
             name: 'expense-tracker-storage',
             partialize: (state) => ({
-                // Only persist these if user is NOT logged in, or to have offline cache?
-                // For simplicity, let's persist everything but aware it might be overwritten by fetch
                 transactions: state.transactions,
                 categories: state.categories,
-                userId: state.userId
+                userId: state.userId,
+                notifications: state.notifications,
+                lastWeatherNotificationDate: state.lastWeatherNotificationDate
             }),
         }
     )

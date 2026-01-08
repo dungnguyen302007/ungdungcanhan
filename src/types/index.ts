@@ -20,6 +20,15 @@ export interface Transaction {
     createdAt: number; // Timestamp
 }
 
+export interface AppNotification {
+    id: string;
+    title: string;
+    message: string;
+    date: string;
+    isRead: boolean;
+    type: 'weather' | 'system';
+}
+
 export const DEFAULT_CATEGORIES: Category[] = [
     // Expense
     { id: 'c1', name: 'Ăn uống', type: 'expense', color: '#fbbf24', icon: 'Utensils', isDefault: true },

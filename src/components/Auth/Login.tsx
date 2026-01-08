@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useStore } from '../../store/useStore';
+import { fetchWeather, formatWeatherNotification } from '../../utils/weather';
 
 export const Login = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
-    const { setUserId, fetchTransactions } = useStore();
+    const { setUserId, fetchTransactions, addNotification } = useStore();
 
-    const handleLogin = (e: React.FormEvent) => {
+    const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
 
         if (username === 'admin' && password === 'admin') {
@@ -15,6 +16,39 @@ export const Login = () => {
             setUserId(SHARED_USER_ID);
             fetchTransactions();
             toast.success('Chào mừng Admin!');
+
+            // Fetch weather and add notification
+            console.log('Attempting to fetch weather...');
+            try {
+                const weather = await fetchWeather();
+                if (weather) {
+                    console.log('Weather fetched successfully:', weather);
+                    const message = formatWeatherNotification(weather);
+                    addNotification({
+                        id: Date.now().toString(),
+                        title: 'Thông báo thời tiết',
+                        message: message,
+                        date: new Date().toISOString(),
+                        isRead: false,
+                        type: 'weather'
+                    });
+                    toast(message, { icon: '🌤️', duration: 5000 });
+                } else {
+                    console.warn('Weather fetch returned null. Adding fallback notification.');
+                    addNotification({
+                        id: Date.now().toString(),
+                        title: 'Hệ thống',
+                        message: 'Chào mừng anh Dũng! Hôm nay trời thật đẹp để bắt đầu quản lý chi tiêu.',
+                        date: new Date().toISOString(),
+                        isRead: false,
+                        type: 'system'
+                    });
+                    toast.success('Chào mừng anh Dũng! Chúc một ngày tốt lành!');
+                }
+            } catch (err) {
+                console.error('Error in weather notification logic:', err);
+                toast.error('Đã có lỗi xảy ra khi lấy thông báo thời tiết.');
+            }
         } else {
             toast.error('Sai tên đăng nhập hoặc mật khẩu!');
         }
@@ -27,7 +61,7 @@ export const Login = () => {
                     <div className="w-20 h-20 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
                         <span className="text-4xl">🔐</span>
                     </div>
-                    <h1 className="text-3xl font-bold text-gray-800">Quản Lý Chi Tiêu</h1>
+                    <h1 className="text-3xl font-bold text-gray-800">Quản Lý Chi Tiêu Anh Dũng</h1>
                     <p className="text-gray-500">Đăng nhập bằng tài khoản quản trị</p>
                 </div>
 

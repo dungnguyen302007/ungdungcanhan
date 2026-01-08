@@ -12,10 +12,11 @@ import { ComparisonStat } from './components/Analytics/Comparison';
 import { useStore } from './store/useStore';
 import { getMonthTransactions, calculateTotals, getPreviousMonth, formatMonth } from './utils/analytics';
 import { type Transaction } from './types';
-import { Toaster } from 'react-hot-toast';
+import { Toaster, toast } from 'react-hot-toast';
+import { fetchWeather, formatWeatherNotification } from './utils/weather';
 
 function App() {
-  const { userId, transactions, fetchTransactions } = useStore();
+  const { userId, transactions, fetchTransactions, lastWeatherNotificationDate, addNotification } = useStore();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -26,6 +27,38 @@ function App() {
       fetchTransactions();
     }
   }, [userId, fetchTransactions]);
+
+  // Daily weather notification at 8:00 AM
+  useEffect(() => {
+    if (!userId) return;
+
+    const checkWeather = async () => {
+      const now = new Date();
+      const today = now.toISOString().split('T')[0];
+      const hours = now.getHours();
+
+      // If it's 8:00 AM and we haven't sent a notification today
+      if (hours === 8 && lastWeatherNotificationDate !== today) {
+        const weather = await fetchWeather();
+        if (weather) {
+          const message = formatWeatherNotification(weather);
+          addNotification({
+            id: Date.now().toString(),
+            title: 'Khởi đầu ngày mới',
+            message: message,
+            date: new Date().toISOString(),
+            isRead: false,
+            type: 'weather'
+          });
+          toast(message, { icon: '🌤️', duration: 6000 });
+        }
+      }
+    };
+
+    checkWeather(); // Check immediately on mount/login
+    const interval = setInterval(checkWeather, 60000); // And then every minute
+    return () => clearInterval(interval);
+  }, [userId, lastWeatherNotificationDate, addNotification]);
 
   if (!userId) {
     return (
