@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { Toaster } from 'react-hot-toast';
 import { AppShell } from './components/Layout/AppShell';
 import { OverviewCards } from './components/Dashboard/OverviewCards';
 import { TransactionForm } from './components/Transactions/TransactionForm';
@@ -151,6 +152,7 @@ function App() {
       {isFormOpen && (
         <TransactionForm onClose={closeForm} initialData={editingTransaction} />
       )}
+      <Toaster position="top-right" />
     </AppShell>
   );
 }

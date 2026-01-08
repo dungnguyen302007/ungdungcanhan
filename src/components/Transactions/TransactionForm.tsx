@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import toast from 'react-hot-toast';
 import type { Transaction, TransactionType } from '../../types';
 import { useStore } from '../../store/useStore';
 import { X, Check } from 'lucide-react';
@@ -10,7 +11,7 @@ interface TransactionFormProps {
 }
 
 export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose, initialData }) => {
-    const { categories, addTransaction, updateTransaction } = useStore();
+    const { categories, transactions, addTransaction, updateTransaction } = useStore();
     const [type, setType] = useState<TransactionType>(initialData?.type || 'expense');
     const [amount, setAmount] = useState(initialData?.amount?.toString() || '');
     const [categoryId, setCategoryId] = useState(initialData?.categoryId || '');
@@ -32,8 +33,38 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose, initi
         e.preventDefault();
         if (!amount || !categoryId || !date) return;
 
+        const numAmount = Number(amount.replace(/\D/g, ''));
+
+        // Check expense limit
+        if (type === 'expense') {
+            const currentMonth = new Date().getMonth();
+            const currentYear = new Date().getFullYear();
+
+            const currentTotalExpense = transactions
+                .filter(t => {
+                    const tDate = new Date(t.date);
+                    return t.type === 'expense' &&
+                        tDate.getMonth() === currentMonth &&
+                        tDate.getFullYear() === currentYear &&
+                        (initialData ? t.id !== initialData.id : true);
+                })
+                .reduce((sum, t) => sum + t.amount, 0);
+
+            if (currentTotalExpense + numAmount > 20000000) {
+                toast.error('Cảnh báo: Tổng chi tiêu tháng này đã vượt quá 20 triệu!', {
+                    duration: 5000,
+                    icon: '⚠️',
+                    style: {
+                        background: '#fff1f2', // red-50
+                        color: '#be123c', // red-700
+                        border: '1px solid #fda4af' // red-300
+                    }
+                });
+            }
+        }
+
         const transactionData: any = {
-            amount: Number(amount.replace(/\D/g, '')), // Clean formatting before saving
+            amount: numAmount, // Clean formatting before saving
             categoryId,
             date,
             description,
