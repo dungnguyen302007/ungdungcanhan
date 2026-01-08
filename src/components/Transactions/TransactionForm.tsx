@@ -118,9 +118,13 @@ export const TransactionForm: React.FC<TransactionFormProps> = ({ onClose, initi
                         <div className="flex items-center justify-center gap-2">
                             <input
                                 autoFocus
-                                type="number"
-                                value={amount}
-                                onChange={(e) => setAmount(e.target.value)}
+                                type="text"
+                                inputMode="numeric"
+                                value={amount ? parseInt(amount).toLocaleString('vi-VN') : ''}
+                                onChange={(e) => {
+                                    const val = e.target.value.replace(/\D/g, '');
+                                    setAmount(val);
+                                }}
                                 className="text-5xl font-black text-gray-900 bg-transparent border-none focus:ring-0 w-full text-right outline-none p-0"
                                 placeholder="0"
                             />
