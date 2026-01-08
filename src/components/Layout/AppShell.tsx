@@ -17,34 +17,34 @@ export const AppShell: React.FC<AppShellProps> = ({ children, activeTab = 'overv
             </main>
 
             {/* Bottom Navigation for Mobile */}
-            <nav className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-2xl border-t border-gray-100 px-8 py-4 flex items-center justify-between z-50 shadow-[0_-4px_24px_rgba(0,0,0,0.04)] md:hidden">
+            <nav className="fixed bottom-0 left-0 right-0 bg-white px-8 py-5 flex items-center justify-between z-50 shadow-[0_-10px_40px_rgba(0,0,0,0.04)] md:hidden rounded-t-[3rem] border-t border-slate-50">
                 <button
                     onClick={() => onTabChange?.('overview')}
-                    className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'overview' ? 'text-blue-500 scale-110' : 'text-gray-400'}`}
+                    className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'overview' ? 'text-blue-500' : 'text-slate-400'}`}
                 >
-                    <LayoutDashboard className="w-6 h-6" strokeWidth={activeTab === 'overview' ? 2.5 : 2} />
-                    <span className={`text-[10px] font-bold ${activeTab === 'overview' ? 'opacity-100' : 'opacity-0'}`}>Tổng quan</span>
+                    <LayoutDashboard className="w-6 h-6" strokeWidth={activeTab === 'overview' ? 3 : 2} fill={activeTab === 'overview' ? 'currentColor' : 'none'} fillOpacity={0.1} />
+                    <span className="text-[10px] font-black tracking-tight">Tổng quan</span>
                 </button>
                 <button
                     onClick={() => onTabChange?.('history')}
-                    className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'history' ? 'text-blue-500 scale-110' : 'text-gray-400'}`}
+                    className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'history' ? 'text-blue-500' : 'text-slate-400'}`}
                 >
-                    <Calendar className="w-6 h-6" strokeWidth={activeTab === 'history' ? 2.5 : 2} />
-                    <span className={`text-[10px] font-bold ${activeTab === 'history' ? 'opacity-100' : 'opacity-0'}`}>Lịch</span>
+                    <Calendar className="w-6 h-6" strokeWidth={activeTab === 'history' ? 3 : 2} fill={activeTab === 'history' ? 'currentColor' : 'none'} fillOpacity={0.1} />
+                    <span className="text-[10px] font-black tracking-tight">Lịch</span>
                 </button>
                 <button
                     onClick={() => onTabChange?.('analytics')}
-                    className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'analytics' ? 'text-blue-500 scale-110' : 'text-gray-400'}`}
+                    className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'analytics' ? 'text-blue-500' : 'text-slate-400'}`}
                 >
-                    <PieChart className="w-6 h-6" strokeWidth={activeTab === 'analytics' ? 2.5 : 2} />
-                    <span className={`text-[10px] font-bold ${activeTab === 'analytics' ? 'opacity-100' : 'opacity-0'}`}>Báo cáo</span>
+                    <PieChart className="w-6 h-6" strokeWidth={activeTab === 'analytics' ? 3 : 2} fill={activeTab === 'analytics' ? 'currentColor' : 'none'} fillOpacity={0.1} />
+                    <span className="text-[10px] font-black tracking-tight">Báo cáo</span>
                 </button>
                 <button
                     onClick={() => onTabChange?.('settings')}
-                    className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'settings' ? 'text-blue-500 scale-110' : 'text-gray-400'}`}
+                    className={`flex flex-col items-center gap-1 transition-all ${activeTab === 'settings' ? 'text-blue-500' : 'text-slate-400'}`}
                 >
-                    <Settings className="w-6 h-6" strokeWidth={activeTab === 'settings' ? 2.5 : 2} />
-                    <span className={`text-[10px] font-bold ${activeTab === 'settings' ? 'opacity-100' : 'opacity-0'}`}>Cài đặt</span>
+                    <Settings className="w-6 h-6" strokeWidth={activeTab === 'settings' ? 3 : 2} fill={activeTab === 'settings' ? 'currentColor' : 'none'} fillOpacity={0.1} />
+                    <span className="text-[10px] font-black tracking-tight">Cài đặt</span>
                 </button>
             </nav>
         </div>
