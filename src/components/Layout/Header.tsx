@@ -1,19 +1,14 @@
 import React from 'react';
 import { Wallet, LogOut } from 'lucide-react';
-import { auth } from '../../lib/firebase';
-import { signOut } from 'firebase/auth';
 import toast from 'react-hot-toast';
+import { useStore } from '../../store/useStore';
 
 export const Header: React.FC = () => {
-    const user = auth.currentUser;
+    const { setUserId } = useStore();
 
-    const handleLogout = async () => {
-        try {
-            await signOut(auth);
-            toast.success('Đã đăng xuất');
-        } catch (error) {
-            toast.error('Lỗi đăng xuất');
-        }
+    const handleLogout = () => {
+        setUserId(null); // Clear local session
+        toast.success('Đã đăng xuất');
     };
 
     return (
@@ -29,13 +24,13 @@ export const Header: React.FC = () => {
                 </div>
                 <div className="flex items-center gap-4">
                     <div className="hidden md:flex flex-col items-end">
-                        <span className="text-sm font-bold text-gray-700">{user?.displayName}</span>
-                        <span className="text-xs text-gray-400">{user?.email}</span>
+                        <span className="text-sm font-bold text-gray-700">Admin</span>
+                        <span className="text-xs text-gray-400">Quản trị viên</span>
                     </div>
                     <div className="w-10 h-10 rounded-full bg-gray-200 overflow-hidden border-2 border-white shadow-sm ring-2 ring-gray-100">
                         <img
-                            src={user?.photoURL || "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix"}
-                            alt="User"
+                            src="https://api.dicebear.com/7.x/avataaars/svg?seed=Admin"
+                            alt="Admin"
                             className="w-full h-full object-cover"
                         />
                     </div>

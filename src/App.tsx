@@ -12,8 +12,6 @@ import { Plus, ChevronLeft, ChevronRight, LayoutDashboard, PieChart } from 'luci
 import { formatMonth } from './utils/format';
 import { addMonths, subMonths } from 'date-fns';
 import type { Transaction } from './types';
-import { auth } from './lib/firebase';
-import { onAuthStateChanged, type User } from 'firebase/auth';
 import { Login } from './components/Auth/Login';
 
 function App() {
@@ -22,24 +20,14 @@ function App() {
   const [activeTab, setActiveTab] = useState<'overview' | 'analytics'>('overview');
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
-  const { setUserId, fetchTransactions, transactions } = useStore();
+  const { userId, fetchTransactions, transactions } = useStore();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
-      if (currentUser) {
-        setUserId(currentUser.uid);
-        fetchTransactions();
-      } else {
-        setUserId(null);
-      }
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
-  }, [setUserId, fetchTransactions]);
+    // If we have a userId (persisted), fetch latest data
+    if (userId) {
+      fetchTransactions();
+    }
+  }, [userId, fetchTransactions]);
 
   const currentMonthTransactions = useMemo(
     () => getMonthTransactions(transactions, currentDate),
@@ -74,15 +62,7 @@ function App() {
     setEditingTransaction(null);
   }
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  if (!user) {
+  if (!userId) {
     return (
       <>
         <Toaster position="top-right" />

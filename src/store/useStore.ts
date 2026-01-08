@@ -108,7 +108,8 @@ export const useStore = create<AppState>()(
                 // Only persist these if user is NOT logged in, or to have offline cache?
                 // For simplicity, let's persist everything but aware it might be overwritten by fetch
                 transactions: state.transactions,
-                categories: state.categories
+                categories: state.categories,
+                userId: state.userId
             }),
         }
     )
