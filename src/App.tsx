@@ -74,7 +74,7 @@ function App() {
 
   return (
     <AppShell activeTab={activeTab} onTabChange={setActiveTab}>
-      <div className="space-y-8 relative pb-10">
+      <div className="max-w-md mx-auto space-y-8 relative pb-10">
 
         {/* Month Selector */}
         <div className="flex items-center justify-between">
