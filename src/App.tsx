@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { AppShell } from './components/Layout/AppShell';
 import { OverviewCards } from './components/Dashboard/OverviewCards';
@@ -12,6 +12,9 @@ import { Plus, ChevronLeft, ChevronRight, LayoutDashboard, PieChart } from 'luci
 import { formatMonth } from './utils/format';
 import { addMonths, subMonths } from 'date-fns';
 import type { Transaction } from './types';
+import { auth } from './lib/firebase';
+import { onAuthStateChanged, type User } from 'firebase/auth';
+import { Login } from './components/Auth/Login';
 
 function App() {
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -19,7 +22,24 @@ function App() {
   const [activeTab, setActiveTab] = useState<'overview' | 'analytics'>('overview');
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
-  const transactions = useStore((state) => state.transactions);
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const { setUserId, fetchTransactions, transactions } = useStore();
+
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+      if (currentUser) {
+        setUserId(currentUser.uid);
+        fetchTransactions();
+      } else {
+        setUserId(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [setUserId, fetchTransactions]);
 
   const currentMonthTransactions = useMemo(
     () => getMonthTransactions(transactions, currentDate),
@@ -52,6 +72,23 @@ function App() {
   const closeForm = () => {
     setIsFormOpen(false);
     setEditingTransaction(null);
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <>
+        <Toaster position="top-right" />
+        <Login />
+      </>
+    );
   }
 
   return (
