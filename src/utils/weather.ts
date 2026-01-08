@@ -3,10 +3,10 @@ export interface WeatherData {
     description: string;
 }
 
-export const fetchWeather = async (city: string = 'Hanoi'): Promise<WeatherData | null> => {
+export const fetchWeather = async (city: string = 'Hue'): Promise<WeatherData | null> => {
     console.log(`Fetching weather for ${city}...`);
     try {
-        const response = await fetch(`https://wttr.in/${city}?format=%t|%C`);
+        const response = await fetch(`https://wttr.in/${city}?format=%t|%C&lang=vi`);
         console.log('Weather response status:', response.status);
         if (!response.ok) throw new Error('Weather fetch failed');
 
@@ -25,5 +25,16 @@ export const fetchWeather = async (city: string = 'Hanoi'): Promise<WeatherData 
 };
 
 export const formatWeatherNotification = (weather: WeatherData): string => {
-    return `Dự báo thời tiết hôm nay: ${weather.description}, nhiệt độ ${weather.temp}. Chúc bạn một ngày tốt lành!`;
+    return `Dự báo thời tiết hôm nay tại Huế: ${weather.description}, nhiệt độ ${weather.temp}. Chúc anh Dũng một ngày tốt lành!`;
+};
+
+export const speakWeather = (text: string) => {
+    if ('speechSynthesis' in window) {
+        const utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'vi-VN';
+        utterance.rate = 0.9;
+        window.speechSynthesis.speak(utterance);
+    } else {
+        console.warn('Trình duyệt không hỗ trợ phát âm thanh.');
+    }
 };

@@ -11,7 +11,7 @@ interface AppShellProps {
 export const AppShell: React.FC<AppShellProps> = ({ children, activeTab = 'overview', onTabChange }) => {
     return (
         <div className="min-h-screen bg-gradient-to-br from-[#FFE4E6] via-[#FFF5F7] to-[#FCE7F3] flex flex-col pb-24 md:pb-0">
-            <Header />
+            <Header onTabChange={onTabChange} />
             <main className="flex-1 w-full max-w-4xl mx-auto px-4 md:px-6 pt-24">
                 {children}
             </main>

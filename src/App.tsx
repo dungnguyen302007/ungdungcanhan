@@ -13,7 +13,7 @@ import { useStore } from './store/useStore';
 import { getMonthTransactions, calculateTotals, getPreviousMonth, formatMonth } from './utils/analytics';
 import { type Transaction } from './types';
 import { Toaster, toast } from 'react-hot-toast';
-import { fetchWeather, formatWeatherNotification } from './utils/weather';
+import { fetchWeather, formatWeatherNotification, speakWeather } from './utils/weather';
 
 function App() {
   const { userId, transactions, fetchTransactions, lastWeatherNotificationDate, addNotification } = useStore();
@@ -51,6 +51,7 @@ function App() {
             type: 'weather'
           });
           toast(message, { icon: '🌤️', duration: 6000 });
+          speakWeather(message);
         }
       }
     };

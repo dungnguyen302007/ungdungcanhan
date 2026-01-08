@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import { useStore } from '../../store/useStore';
-import { fetchWeather, formatWeatherNotification } from '../../utils/weather';
+import { fetchWeather, formatWeatherNotification, speakWeather } from '../../utils/weather';
 
 export const Login = () => {
     const [username, setUsername] = useState('');
@@ -33,17 +33,20 @@ export const Login = () => {
                         type: 'weather'
                     });
                     toast(message, { icon: '🌤️', duration: 5000 });
+                    speakWeather(message);
                 } else {
                     console.warn('Weather fetch returned null. Adding fallback notification.');
+                    const fallbackMessage = 'Chào mừng anh Dũng! Hôm nay trời thật đẹp để bắt đầu quản lý chi tiêu.';
                     addNotification({
                         id: Date.now().toString(),
                         title: 'Hệ thống',
-                        message: 'Chào mừng anh Dũng! Hôm nay trời thật đẹp để bắt đầu quản lý chi tiêu.',
+                        message: fallbackMessage,
                         date: new Date().toISOString(),
                         isRead: false,
                         type: 'system'
                     });
                     toast.success('Chào mừng anh Dũng! Chúc một ngày tốt lành!');
+                    speakWeather(fallbackMessage);
                 }
             } catch (err) {
                 console.error('Error in weather notification logic:', err);
