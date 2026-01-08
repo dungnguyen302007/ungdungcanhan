@@ -1,106 +1,90 @@
-import { useEffect, useState, useMemo } from 'react';
-import { Toaster } from 'react-hot-toast';
+import React, { useState, useEffect } from 'react';
+import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Header } from './components/Layout/Header';
 import { AppShell } from './components/Layout/AppShell';
 import { OverviewCards } from './components/Dashboard/OverviewCards';
-import { TransactionForm } from './components/Transactions/TransactionForm';
-import { TransactionList } from './components/Transactions/TransactionList';
 import { TopCategories } from './components/Dashboard/TopCategories';
+import { TransactionList } from './components/Transactions/TransactionList';
+import { TransactionForm } from './components/Transactions/TransactionForm';
+import { LoginForm } from './components/Auth/LoginForm';
 import { ExpensePieChart, IncomeExpenseBarChart } from './components/Analytics/Charts';
 import { ComparisonStat } from './components/Analytics/Comparison';
 import { useStore } from './store/useStore';
-import { calculateTotals, getMonthTransactions } from './utils/analytics';
-import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
-import { formatMonth } from './utils/format';
-import { addMonths, subMonths } from 'date-fns';
-import type { Transaction } from './types';
-import { Login } from './components/Auth/Login';
+import { formatMonth, getMonthTransactions, calculateTotals, getPreviousMonth } from './utils/analytics';
+import { type Transaction } from './types';
+import { Toaster } from 'react-hot-toast';
 
 function App() {
+  const { userId, transactions, fetchTransactions } = useStore();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'overview' | 'analytics' | 'history' | 'settings'>('overview');
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
-
-  const { userId, fetchTransactions, transactions } = useStore();
+  const [activeTab, setActiveTab] = useState<'overview' | 'analytics' | 'history' | 'settings'>('overview');
 
   useEffect(() => {
-    // If we have a userId (persisted), fetch latest data
     if (userId) {
       fetchTransactions();
     }
   }, [userId, fetchTransactions]);
 
-  const currentMonthTransactions = useMemo(
-    () => getMonthTransactions(transactions, currentDate),
-    [transactions, currentDate]
-  );
+  if (!userId) {
+    return (
+      <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
+        <LoginForm />
+        <Toaster position="top-center" />
+      </div>
+    );
+  }
 
-  const prevMonthTransactions = useMemo(
-    () => getMonthTransactions(transactions, subMonths(currentDate, 1)),
-    [transactions, currentDate]
-  );
+  const currentMonthTransactions = getMonthTransactions(transactions, currentDate);
+  const totals = calculateTotals(currentMonthTransactions);
 
-  const totals = useMemo(
-    () => calculateTotals(currentMonthTransactions),
-    [currentMonthTransactions]
-  );
+  const prevDate = getPreviousMonth(currentDate);
+  const prevMonthTransactions = getMonthTransactions(transactions, prevDate);
+  const prevTotals = calculateTotals(prevMonthTransactions);
 
-  const prevTotals = useMemo(
-    () => calculateTotals(prevMonthTransactions),
-    [prevMonthTransactions]
-  );
+  const handlePrevMonth = () => setCurrentDate(prevDate);
+  const handleNextMonth = () => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)));
 
-  const handlePrevMonth = () => setCurrentDate(addMonths(currentDate, -1));
-  const handleNextMonth = () => setCurrentDate(addMonths(currentDate, 1));
-
-  const handleEdit = (transaction: Transaction) => {
-    setEditingTransaction(transaction);
+  const handleEdit = (t: Transaction) => {
+    setEditingTransaction(t);
     setIsFormOpen(true);
   };
 
   const closeForm = () => {
     setIsFormOpen(false);
     setEditingTransaction(null);
-  }
-
-  if (!userId) {
-    return (
-      <>
-        <Toaster position="top-right" />
-        <Login />
-      </>
-    );
-  }
+  };
 
   return (
     <AppShell activeTab={activeTab} onTabChange={setActiveTab}>
-      <div className="max-w-md mx-auto space-y-8 relative pb-10">
-
-        {/* Month Selector */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2 bg-white/50 p-1.5 rounded-2xl border border-white shadow-soft">
-            <button onClick={handlePrevMonth} className="p-2 hover:bg-white rounded-xl transition-all text-gray-400 hover:text-blue-500">
-              <ChevronLeft className="w-5 h-5" />
-            </button>
-            <h2 className="text-sm font-bold min-w-[120px] text-center capitalize text-gray-700">
-              {formatMonth(currentDate)}
-            </h2>
-            <button onClick={handleNextMonth} className="p-2 hover:bg-white rounded-xl transition-all text-gray-400 hover:text-blue-500">
-              <ChevronRight className="w-5 h-5" />
-            </button>
-          </div>
-        </div>
+      <div className="max-w-md mx-auto space-y-9 relative pb-24 px-1">
 
         {activeTab === 'overview' && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+          <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 space-y-8">
+            {/* Header row with Title and Month Selector */}
+            <div className="flex items-center justify-between pt-2">
+              <h2 className="text-3xl font-black text-slate-900 tracking-tighter">Tổng quan</h2>
+              <div className="flex items-center gap-1 bg-[#F1F5F9] p-1.5 rounded-2xl border border-slate-100">
+                <button onClick={handlePrevMonth} className="p-1 hover:bg-white rounded-lg transition-all text-slate-400">
+                  <ChevronLeft className="w-5 h-5" strokeWidth={3} />
+                </button>
+                <span className="text-[13px] font-extrabold text-slate-700 px-1 capitalize min-w-[100px] text-center">
+                  {formatMonth(currentDate)}
+                </span>
+                <button onClick={handleNextMonth} className="p-1 hover:bg-white rounded-lg transition-all text-slate-400">
+                  <ChevronRight className="w-5 h-5" strokeWidth={3} />
+                </button>
+              </div>
+            </div>
+
             <OverviewCards {...totals} />
 
             <TopCategories transactions={currentMonthTransactions} />
 
-            <section className="space-y-4">
+            <section className="space-y-6">
               <div className="flex items-center justify-between">
-                <h3 className="text-xl font-bold text-gray-800">Giao dịch gần đây</h3>
-                <button className="text-blue-500 font-bold text-sm hover:underline">Xem tất cả</button>
+                <h3 className="text-2xl font-black text-slate-800 tracking-tight text-left">Giao dịch gần đây</h3>
               </div>
               <TransactionList
                 transactions={currentMonthTransactions.slice(0, 5)}
@@ -111,10 +95,10 @@ function App() {
         )}
 
         {activeTab === 'analytics' && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h2 className="text-2xl font-bold text-gray-800">Báo cáo chi tiết</h2>
+          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-700">
+            <h2 className="text-3xl font-black text-slate-900 tracking-tighter pt-2">Báo cáo</h2>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4">
               <ComparisonStat
                 label="Tổng thu nhập"
                 current={totals.income}
@@ -129,13 +113,13 @@ function App() {
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div className="bg-white p-6 rounded-[2rem] shadow-soft border border-gray-50">
-                <h3 className="text-lg font-bold mb-6 text-center text-gray-800">Cơ cấu chi tiêu</h3>
+            <div className="space-y-6">
+              <div className="bg-white p-8 rounded-[3rem] shadow-card border border-slate-50 font-black">
+                <h3 className="text-xl font-black mb-8 text-center text-slate-800">Cơ cấu chi tiêu</h3>
                 <ExpensePieChart transactions={currentMonthTransactions} />
               </div>
-              <div className="bg-white p-6 rounded-[2rem] shadow-soft border border-gray-50">
-                <h3 className="text-lg font-bold mb-6 text-center text-gray-800">Thu nhập vs Chi tiêu</h3>
+              <div className="bg-white p-8 rounded-[3rem] shadow-card border border-slate-50 font-black">
+                <h3 className="text-xl font-black mb-8 text-center text-slate-800">Thu nhập vs Chi tiêu</h3>
                 <IncomeExpenseBarChart transactions={currentMonthTransactions} />
               </div>
             </div>
@@ -143,21 +127,23 @@ function App() {
         )}
 
         {activeTab === 'history' && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h2 className="text-2xl font-bold text-gray-800">Lịch sử giao dịch</h2>
-            <TransactionList
-              transactions={currentMonthTransactions}
-              onEdit={handleEdit}
-            />
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
+            <h2 className="text-3xl font-black text-slate-900 tracking-tighter pt-2 text-left">Lịch sử</h2>
+            <TransactionList transactions={currentMonthTransactions} onEdit={handleEdit} />
           </div>
         )}
 
         {activeTab === 'settings' && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
-            <h2 className="text-2xl font-bold text-gray-800">Cài đặt</h2>
-            <div className="bg-white rounded-[2rem] p-8 shadow-soft border border-gray-50 text-center text-gray-400">
-              <SettingsIcon className="w-12 h-12 mx-auto mb-4 opacity-20" />
-              Tính năng đang được phát triển
+          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
+            <h2 className="text-3xl font-black text-slate-900 tracking-tighter pt-2 text-left">Cài đặt</h2>
+            <div className="bg-white p-8 rounded-[2.5rem] shadow-card border border-slate-50 text-center space-y-4">
+              <p className="text-slate-500 font-bold">Phiên bản 1.0.0</p>
+              <button
+                onClick={() => useStore.getState().setUserId(null)}
+                className="w-full bg-red-50 text-red-600 font-black py-4 rounded-3xl hover:bg-red-100 transition-all"
+              >
+                Đăng xuất
+              </button>
             </div>
           </div>
         )}
@@ -165,28 +151,21 @@ function App() {
         {/* Floating Add Button */}
         <button
           onClick={() => setIsFormOpen(true)}
-          className="fixed bottom-24 right-6 md:right-10 w-16 h-16 bg-blue-500 text-white rounded-full flex items-center justify-center shadow-xl shadow-blue-200 hover:bg-blue-600 hover:scale-110 active:scale-95 transition-all z-40"
+          className="fixed bottom-28 right-6 w-16 h-16 bg-blue-500 text-white rounded-full flex items-center justify-center shadow-2xl shadow-blue-500/40 hover:bg-blue-600 hover:scale-110 active:scale-95 transition-all z-40 border-4 border-white"
         >
-          <Plus className="w-8 h-8" />
+          <Plus className="w-8 h-8" strokeWidth={3} />
         </button>
 
+        {isFormOpen && (
+          <TransactionForm
+            onClose={closeForm}
+            initialData={editingTransaction}
+          />
+        )}
       </div>
-
-      {/* Modal Form */}
-      {isFormOpen && (
-        <TransactionForm onClose={closeForm} initialData={editingTransaction} />
-      )}
-      <Toaster position="top-right" />
+      <Toaster position="top-center" />
     </AppShell>
   );
 }
-
-// Helper icons for placeholder
-const SettingsIcon = ({ className }: { className?: string }) => (
-  <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37a1.724 1.724 0 002.572-1.065z" />
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
-  </svg>
-);
 
 export default App;

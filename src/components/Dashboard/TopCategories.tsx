@@ -34,32 +34,32 @@ export const TopCategories: React.FC<TopCategoriesProps> = ({ transactions }) =>
     const totalExpense = Object.values(categoryTotals).reduce((a, b) => a + b, 0);
 
     return (
-        <div className="space-y-4">
+        <div className="space-y-5">
             <div className="flex items-center justify-between">
-                <h3 className="text-xl font-bold text-gray-800">Top chi tiêu</h3>
-                <button className="text-blue-500 font-bold text-sm hover:underline">Xem tất cả</button>
+                <h3 className="text-2xl font-black text-slate-800 tracking-tight">Top chi tiêu</h3>
+                <button className="text-[#3B82F6] font-extrabold text-base">Xem tất cả</button>
             </div>
 
-            <div className="space-y-3">
+            <div className="space-y-4">
                 {sortedCategories.map(([catId, amount]) => {
                     const categoryInfo = DEFAULT_CATEGORIES.find(c => c.id === catId);
                     const design = CATEGORY_MAP[catId] || CATEGORY_MAP['c9'];
 
                     return (
-                        <div key={catId} className="bg-white p-5 rounded-3xl shadow-soft border border-gray-50 flex items-center gap-4 transition-all hover:translate-x-1">
-                            <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${design.bgColor}`}>
-                                {design.icon}
+                        <div key={catId} className="bg-white p-6 rounded-[2.5rem] shadow-soft-sm border border-slate-50 flex items-center gap-5">
+                            <div className={`w-14 h-14 rounded-3xl flex items-center justify-center shrink-0 ${design.bgColor}`}>
+                                {React.cloneElement(design.icon as React.ReactElement, { className: 'w-7 h-7' })}
                             </div>
 
-                            <div className="flex-1 space-y-2">
+                            <div className="flex-1 space-y-3">
                                 <div className="flex items-center justify-between">
-                                    <span className="font-bold text-gray-800">{categoryInfo?.name || 'Khác'}</span>
-                                    <span className="font-bold text-gray-800">{formatCurrency(amount)}</span>
+                                    <span className="font-extrabold text-slate-900 text-lg tracking-tight">{categoryInfo?.name || 'Khác'}</span>
+                                    <span className="font-extrabold text-slate-900 text-lg tracking-tight">{formatCurrency(amount)}</span>
                                 </div>
 
-                                <div className="h-1.5 w-full bg-gray-100 rounded-full overflow-hidden">
+                                <div className="h-3 w-full bg-[#F1F5F9] rounded-full overflow-hidden">
                                     <div
-                                        className={`h-full rounded-full ${design.color}`}
+                                        className={`h-full rounded-full ${design.color} transition-all duration-1000 ease-out`}
                                         style={{ width: `${Math.min((amount / totalExpense) * 100, 100)}%` }}
                                     ></div>
                                 </div>
@@ -69,7 +69,7 @@ export const TopCategories: React.FC<TopCategoriesProps> = ({ transactions }) =>
                 })}
 
                 {sortedCategories.length === 0 && (
-                    <div className="text-center py-10 text-gray-400 italic">
+                    <div className="text-center py-10 text-gray-400 italic font-medium">
                         Chưa có chi tiêu nào trong tháng này
                     </div>
                 )}
