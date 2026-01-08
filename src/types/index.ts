@@ -22,7 +22,7 @@ export interface Transaction {
 
 export const DEFAULT_CATEGORIES: Category[] = [
     // Expense
-    { id: 'c1', name: 'Ăn uống', type: 'expense', color: '#ff6b6b', icon: 'Utensils', isDefault: true },
+    { id: 'c1', name: 'Ăn uống', type: 'expense', color: '#fbbf24', icon: 'Utensils', isDefault: true },
     { id: 'c2', name: 'Nhà ở', type: 'expense', color: '#4ecdc4', icon: 'Home', isDefault: true },
     { id: 'c3', name: 'Đi lại', type: 'expense', color: '#45b7d1', icon: 'Car', isDefault: true },
     { id: 'c4', name: 'Điện nước', type: 'expense', color: '#f7d794', icon: 'Zap', isDefault: true },

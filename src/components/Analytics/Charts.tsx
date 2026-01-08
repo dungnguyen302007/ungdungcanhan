@@ -64,7 +64,7 @@ export const IncomeExpenseBarChart: React.FC<ChartsProps> = ({ transactions }) =
         const expense = transactions.filter(t => t.type === 'expense').reduce((sum, t) => sum + t.amount, 0);
         return [
             { name: 'Thu nhập', amount: income, fill: '#4ade80' }, // green-400
-            { name: 'Chi tiêu', amount: expense, fill: '#f87171' }, // red-400
+            { name: 'Chi tiêu', amount: expense, fill: '#fbbf24' }, // yellow-400
         ];
     }, [transactions]);
 
