@@ -1,5 +1,6 @@
 import type { Transaction } from '../types';
-import { isSameMonth, isSameYear, parseISO } from 'date-fns';
+import { isSameMonth, isSameYear, parseISO, format, subMonths } from 'date-fns';
+import { vi } from 'date-fns/locale';
 
 export const getMonthTransactions = (
     transactions: Transaction[],
@@ -23,6 +24,14 @@ export const calculateTotals = (transactions: Transaction[]) => {
         expense,
         balance: income - expense,
     };
+};
+
+export const formatMonth = (date: Date) => {
+    return format(date, 'MMMM, yyyy', { locale: vi });
+};
+
+export const getPreviousMonth = (date: Date) => {
+    return subMonths(date, 1);
 };
 
 export const getCategoryStats = (transactions: Transaction[]) => {

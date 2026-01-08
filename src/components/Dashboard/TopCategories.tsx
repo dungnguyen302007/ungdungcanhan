@@ -46,9 +46,9 @@ export const TopCategories: React.FC<TopCategoriesProps> = ({ transactions }) =>
                     const design = CATEGORY_MAP[catId] || CATEGORY_MAP['c9'];
 
                     return (
-                        <div key={catId} className="bg-white p-6 rounded-[2.5rem] shadow-soft-sm border border-slate-50 flex items-center gap-5">
+                        <div key={catId} className="bg-white p-6 rounded-[2.5rem] shadow-card border border-slate-50 flex items-center gap-5">
                             <div className={`w-14 h-14 rounded-3xl flex items-center justify-center shrink-0 ${design.bgColor}`}>
-                                {React.cloneElement(design.icon as React.ReactElement, { className: 'w-7 h-7' })}
+                                {React.isValidElement(design.icon) ? React.cloneElement(design.icon as React.ReactElement<any>, { className: 'w-7 h-7' }) : design.icon}
                             </div>
 
                             <div className="flex-1 space-y-3">

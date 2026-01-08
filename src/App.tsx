@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Header } from './components/Layout/Header';
 import { AppShell } from './components/Layout/AppShell';
@@ -6,11 +6,11 @@ import { OverviewCards } from './components/Dashboard/OverviewCards';
 import { TopCategories } from './components/Dashboard/TopCategories';
 import { TransactionList } from './components/Transactions/TransactionList';
 import { TransactionForm } from './components/Transactions/TransactionForm';
-import { LoginForm } from './components/Auth/LoginForm';
+import { Login } from './components/Auth/Login';
 import { ExpensePieChart, IncomeExpenseBarChart } from './components/Analytics/Charts';
 import { ComparisonStat } from './components/Analytics/Comparison';
 import { useStore } from './store/useStore';
-import { formatMonth, getMonthTransactions, calculateTotals, getPreviousMonth } from './utils/analytics';
+import { getMonthTransactions, calculateTotals, getPreviousMonth, formatMonth } from './utils/analytics';
 import { type Transaction } from './types';
 import { Toaster } from 'react-hot-toast';
 
@@ -30,7 +30,7 @@ function App() {
   if (!userId) {
     return (
       <div className="min-h-screen bg-[#F8FAFC] flex items-center justify-center p-4">
-        <LoginForm />
+        <Login />
         <Toaster position="top-center" />
       </div>
     );
@@ -44,7 +44,11 @@ function App() {
   const prevTotals = calculateTotals(prevMonthTransactions);
 
   const handlePrevMonth = () => setCurrentDate(prevDate);
-  const handleNextMonth = () => setCurrentDate(new Date(currentDate.setMonth(currentDate.getMonth() + 1)));
+  const handleNextMonth = () => {
+    const nextDate = new Date(currentDate);
+    nextDate.setMonth(nextDate.getMonth() + 1);
+    setCurrentDate(nextDate);
+  };
 
   const handleEdit = (t: Transaction) => {
     setEditingTransaction(t);
@@ -58,7 +62,8 @@ function App() {
 
   return (
     <AppShell activeTab={activeTab} onTabChange={setActiveTab}>
-      <div className="max-w-md mx-auto space-y-9 relative pb-24 px-1">
+      <Header />
+      <div className="max-w-md mx-auto space-y-9 relative pb-24 px-1 pt-20">
 
         {activeTab === 'overview' && (
           <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 space-y-8">
@@ -96,7 +101,7 @@ function App() {
 
         {activeTab === 'analytics' && (
           <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-700">
-            <h2 className="text-3xl font-black text-slate-900 tracking-tighter pt-2">Báo cáo</h2>
+            <h2 className="text-3xl font-black text-slate-900 tracking-tighter pt-2 text-left">Báo cáo</h2>
 
             <div className="grid grid-cols-1 gap-4">
               <ComparisonStat
@@ -114,11 +119,11 @@ function App() {
             </div>
 
             <div className="space-y-6">
-              <div className="bg-white p-8 rounded-[3rem] shadow-card border border-slate-50 font-black">
+              <div className="bg-white p-8 rounded-[3rem] shadow-card border border-slate-50">
                 <h3 className="text-xl font-black mb-8 text-center text-slate-800">Cơ cấu chi tiêu</h3>
                 <ExpensePieChart transactions={currentMonthTransactions} />
               </div>
-              <div className="bg-white p-8 rounded-[3rem] shadow-card border border-slate-50 font-black">
+              <div className="bg-white p-8 rounded-[3rem] shadow-card border border-slate-50">
                 <h3 className="text-xl font-black mb-8 text-center text-slate-800">Thu nhập vs Chi tiêu</h3>
                 <IncomeExpenseBarChart transactions={currentMonthTransactions} />
               </div>
@@ -137,10 +142,10 @@ function App() {
           <div className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
             <h2 className="text-3xl font-black text-slate-900 tracking-tighter pt-2 text-left">Cài đặt</h2>
             <div className="bg-white p-8 rounded-[2.5rem] shadow-card border border-slate-50 text-center space-y-4">
-              <p className="text-slate-500 font-bold">Phiên bản 1.0.0</p>
+              <p className="text-slate-500 font-bold font-black">Phiên bản 1.0.0</p>
               <button
                 onClick={() => useStore.getState().setUserId(null)}
-                className="w-full bg-red-50 text-red-600 font-black py-4 rounded-3xl hover:bg-red-100 transition-all"
+                className="w-full bg-red-50 text-red-600 font-black py-4 rounded-3xl hover:bg-red-100 transition-all font-black text-lg"
               >
                 Đăng xuất
               </button>
