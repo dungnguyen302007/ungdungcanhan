@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Header } from './components/Layout/Header';
 import { AppShell } from './components/Layout/AppShell';
 import { OverviewCards } from './components/Dashboard/OverviewCards';
 import { TopCategories } from './components/Dashboard/TopCategories';
@@ -96,8 +95,7 @@ function App() {
 
   return (
     <AppShell activeTab={activeTab} onTabChange={setActiveTab}>
-      <Header />
-      <div className="max-w-md mx-auto space-y-9 relative pb-24 px-1 pt-20">
+      <div className="max-w-md mx-auto space-y-9 relative pb-24 px-1 pt-4">
 
         {activeTab === 'overview' && (
           <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 space-y-8">
