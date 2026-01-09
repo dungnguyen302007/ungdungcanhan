@@ -1,25 +1,18 @@
 import { useState, useEffect } from 'react';
-import { Plus, ChevronLeft, ChevronRight } from 'lucide-react';
-import { AppShell } from './components/Layout/AppShell';
-import { OverviewCards } from './components/Dashboard/OverviewCards';
-import { TopCategories } from './components/Dashboard/TopCategories';
-import { TransactionList } from './components/Transactions/TransactionList';
-import { TransactionForm } from './components/Transactions/TransactionForm';
+import { Sidebar } from './components/Layout/Sidebar';
+import { DashboardHome } from './components/Dashboard/DashboardHome';
+import { FinanceApp } from './components/Finance/FinanceApp';
 import { Login } from './components/Auth/Login';
-import { ExpensePieChart, IncomeExpenseBarChart } from './components/Analytics/Charts';
-import { ComparisonStat } from './components/Analytics/Comparison';
 import { useStore } from './store/useStore';
-import { getMonthTransactions, calculateTotals, getPreviousMonth, formatMonth } from './utils/analytics';
-import { type Transaction } from './types';
 import { Toaster, toast } from 'react-hot-toast';
 import { fetchWeather, formatWeatherNotification, speakWeather } from './utils/weather';
+import { Menu, X } from 'lucide-react';
 
 function App() {
-  const { userId, transactions, fetchTransactions, lastWeatherNotificationDate, addNotification } = useStore();
-  const [currentDate, setCurrentDate] = useState(new Date());
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'analytics' | 'history' | 'settings'>('overview');
+  const { userId, fetchTransactions, lastWeatherNotificationDate, addNotification } = useStore();
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'finance' | 'tasks' | 'health' | 'settings'>('dashboard');
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [showLoginModal, setShowLoginModal] = useState(false);
 
   useEffect(() => {
     if (userId) {
@@ -36,7 +29,6 @@ function App() {
       const today = now.toISOString().split('T')[0];
       const hours = now.getHours();
 
-      // If it's 8:00 AM and we haven't sent a notification today
       if (hours === 8 && lastWeatherNotificationDate !== today) {
         const weather = await fetchWeather();
         if (weather) {
@@ -55,153 +47,109 @@ function App() {
       }
     };
 
-    checkWeather(); // Check immediately on mount/login
-    const interval = setInterval(checkWeather, 60000); // And then every minute
+    checkWeather();
+    const interval = setInterval(checkWeather, 60000);
     return () => clearInterval(interval);
   }, [userId, lastWeatherNotificationDate, addNotification]);
 
-  if (!userId) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-[#FFE4E6] via-[#FFF5F7] to-[#FCE7F3] flex items-center justify-center p-4">
-        <Login />
-        <Toaster position="top-center" />
-      </div>
-    );
-  }
-
-  const currentMonthTransactions = getMonthTransactions(transactions, currentDate);
-  const totals = calculateTotals(currentMonthTransactions);
-
-  const prevDate = getPreviousMonth(currentDate);
-  const prevMonthTransactions = getMonthTransactions(transactions, prevDate);
-  const prevTotals = calculateTotals(prevMonthTransactions);
-
-  const handlePrevMonth = () => setCurrentDate(prevDate);
-  const handleNextMonth = () => {
-    const nextDate = new Date(currentDate);
-    nextDate.setMonth(nextDate.getMonth() + 1);
-    setCurrentDate(nextDate);
-  };
-
-  const handleEdit = (t: Transaction) => {
-    setEditingTransaction(t);
-    setIsFormOpen(true);
-  };
-
-  const closeForm = () => {
-    setIsFormOpen(false);
-    setEditingTransaction(null);
-  };
+  // Check if user tries to access Finance without login
+  useEffect(() => {
+    if (activeTab === 'finance' && !userId) {
+      setShowLoginModal(true);
+    } else {
+      setShowLoginModal(false);
+    }
+  }, [activeTab, userId]);
 
   return (
-    <AppShell activeTab={activeTab} onTabChange={setActiveTab}>
-      <div className="max-w-md mx-auto space-y-9 relative pb-24 px-1 pt-4">
-
-        {activeTab === 'overview' && (
-          <div className="animate-in fade-in slide-in-from-bottom-6 duration-700 space-y-8">
-            {/* Header row with Title and Month Selector */}
-            <div className="flex items-center justify-between pt-2">
-              <h2 className="text-3xl font-black text-slate-900 tracking-tighter">Tổng quan</h2>
-              <div className="flex items-center gap-1 bg-[#F1F5F9] p-1.5 rounded-2xl border border-slate-100">
-                <button onClick={handlePrevMonth} className="p-1 hover:bg-white rounded-lg transition-all text-slate-400">
-                  <ChevronLeft className="w-5 h-5" strokeWidth={3} />
-                </button>
-                <span className="text-[13px] font-extrabold text-slate-700 px-1 capitalize min-w-[100px] text-center">
-                  {formatMonth(currentDate)}
-                </span>
-                <button onClick={handleNextMonth} className="p-1 hover:bg-white rounded-lg transition-all text-slate-400">
-                  <ChevronRight className="w-5 h-5" strokeWidth={3} />
-                </button>
-              </div>
-            </div>
-
-            <OverviewCards {...totals} />
-
-            <TopCategories transactions={currentMonthTransactions} />
-
-            <section className="space-y-6">
-              <div className="flex items-center justify-between">
-                <h3 className="text-2xl font-black text-slate-800 tracking-tight text-left">Giao dịch gần đây</h3>
-              </div>
-              <TransactionList
-                transactions={currentMonthTransactions.slice(0, 5)}
-                onEdit={handleEdit}
-              />
-            </section>
+    <>
+      {/* Login Modal - only show when accessing Finance */}
+      {showLoginModal && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[100] flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl">
+            <h3 className="text-2xl font-black text-slate-900 mb-2">Đăng nhập</h3>
+            <p className="text-slate-500 mb-6">Bạn cần đăng nhập để truy cập Tài chính</p>
+            <Login />
+            <button
+              onClick={() => {
+                setShowLoginModal(false);
+                setActiveTab('dashboard');
+              }}
+              className="mt-4 w-full py-3 text-slate-600 hover:text-slate-900 font-bold text-sm"
+            >
+              Quay lại Tổng quan
+            </button>
           </div>
-        )}
+        </div>
+      )}
 
-        {activeTab === 'analytics' && (
-          <div className="space-y-8 animate-in fade-in slide-in-from-bottom-6 duration-700">
-            <h2 className="text-3xl font-black text-slate-900 tracking-tighter pt-2 text-left">Báo cáo</h2>
-
-            <div className="grid grid-cols-1 gap-4">
-              <ComparisonStat
-                label="Tổng thu nhập"
-                current={totals.income}
-                previous={prevTotals.income}
-                type="income"
-              />
-              <ComparisonStat
-                label="Tổng chi tiêu"
-                current={totals.expense}
-                previous={prevTotals.expense}
-                type="expense"
-              />
-            </div>
-
-            <div className="space-y-6">
-              <div className="bg-white p-8 rounded-[3rem] shadow-card border border-slate-50">
-                <h3 className="text-xl font-black mb-8 text-center text-slate-800">Cơ cấu chi tiêu</h3>
-                <ExpensePieChart transactions={currentMonthTransactions} />
-              </div>
-              <div className="bg-white p-8 rounded-[3rem] shadow-card border border-slate-50">
-                <h3 className="text-xl font-black mb-8 text-center text-slate-800">Thu nhập vs Chi tiêu</h3>
-                <IncomeExpenseBarChart transactions={currentMonthTransactions} />
-              </div>
-            </div>
-          </div>
-        )}
-
-        {activeTab === 'history' && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
-            <h2 className="text-3xl font-black text-slate-900 tracking-tighter pt-2 text-left">Lịch sử</h2>
-            <TransactionList transactions={currentMonthTransactions} onEdit={handleEdit} />
-          </div>
-        )}
-
-        {activeTab === 'settings' && (
-          <div className="space-y-6 animate-in fade-in slide-in-from-bottom-6 duration-700">
-            <h2 className="text-3xl font-black text-slate-900 tracking-tighter pt-2 text-left">Cài đặt</h2>
-            <div className="bg-white p-8 rounded-[2.5rem] shadow-card border border-slate-50 text-center space-y-4">
-              <p className="text-slate-500 font-bold font-black">Phiên bản 1.0.0</p>
-              <button
-                onClick={() => useStore.getState().setUserId(null)}
-                className="w-full bg-red-50 text-red-600 font-black py-4 rounded-3xl hover:bg-red-100 transition-all font-black text-lg"
-              >
-                Đăng xuất
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Floating Add Button */}
-        <button
-          onClick={() => setIsFormOpen(true)}
-          className="fixed bottom-28 right-6 w-16 h-16 bg-blue-500 text-white rounded-full flex items-center justify-center shadow-blue-glow hover:bg-blue-600 hover:scale-110 active:scale-95 transition-all z-40 border-4 border-white"
-        >
-          <Plus className="w-8 h-8" strokeWidth={3} />
-        </button>
-
-        {isFormOpen && (
-          <TransactionForm
-            onClose={closeForm}
-            initialData={editingTransaction}
+      <div className="min-h-screen bg-[#F8FAFC] flex">
+        {/* Mobile Sidebar Overlay */}
+        {isSidebarOpen && (
+          <div
+            className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-[70] lg:hidden"
+            onClick={() => setIsSidebarOpen(false)}
           />
         )}
+
+        {/* Sidebar container */}
+        <div
+          className={`fixed inset-y-0 left-0 z-[80] w-64 transform transition-transform duration-300 lg:relative lg:translate-x-0 ${isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+            }`}
+        >
+          <Sidebar
+            activeTab={activeTab}
+            onTabChange={(tab) => {
+              setActiveTab(tab as any);
+              setIsSidebarOpen(false);
+            }}
+          />
+        </div>
+
+        {/* Main Content Area */}
+        <main className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto bg-slate-50/50">
+          {/* Mobile Header Toggle */}
+          <div className="lg:hidden p-4 flex items-center justify-between border-b bg-white/80 backdrop-blur-md sticky top-0 z-50">
+            <div className="flex items-center gap-2">
+              <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center text-white">
+                <Menu size={18} />
+              </div>
+              <span className="font-black text-slate-900">MyLife</span>
+            </div>
+            <button
+              onClick={() => setIsSidebarOpen(!isSidebarOpen)}
+              className="w-10 h-10 bg-slate-50 rounded-xl flex items-center justify-center text-slate-600 border border-slate-100"
+            >
+              {isSidebarOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
+          </div>
+
+          {activeTab === 'dashboard' && <DashboardHome />}
+          {activeTab === 'finance' && userId && <FinanceApp />}
+
+          {/* Placeholders for other tabs */}
+          {(activeTab === 'tasks' || activeTab === 'health' || activeTab === 'settings') && (
+            <div className="flex-1 flex items-center justify-center p-10">
+              <div className="text-center space-y-4">
+                <div className="w-20 h-20 bg-slate-50 text-slate-200 rounded-3xl flex items-center justify-center mx-auto border-4 border-white shadow-soft-sm">
+                  <Menu size={40} />
+                </div>
+                <h3 className="text-xl font-black text-slate-800 tracking-tight capitalize">{activeTab}</h3>
+                <p className="text-slate-400 font-bold max-w-xs mx-auto text-sm">Tính năng này đang được phát triển. Anh vui lòng quay lại sau nhé!</p>
+                <button
+                  onClick={() => setActiveTab('dashboard')}
+                  className="text-blue-500 font-black text-xs uppercase tracking-widest hover:underline"
+                >
+                  Quay lại Tổng quan
+                </button>
+              </div>
+            </div>
+          )}
+        </main>
+
+        <Toaster position="top-right" />
       </div>
-      <Toaster position="top-center" />
-    </AppShell>
+    </>
   );
 }
 

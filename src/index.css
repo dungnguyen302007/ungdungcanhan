@@ -45,17 +45,46 @@ body {
   }
 
   .shadow-card {
-    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.06);
+    box-shadow: 0 10px 50px -12px rgba(0, 0, 0, 0.05);
   }
 
   .shadow-soft-sm {
-    box-shadow: 0 10px 30px -10px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
   }
 
   .shadow-blue-glow {
-    box-shadow: 0 15px 35px -5px rgba(29, 133, 254, 0.4);
+    box-shadow: 0 10px 30px -5px rgba(59, 130, 246, 0.3);
+  }
+
+  .shadow-emerald-glow {
+    box-shadow: 0 10px 30px -5px rgba(16, 185, 129, 0.3);
   }
 }
+
+@keyframes wave {
+  0% { transform: rotate(0deg); }
+  10% { transform: rotate(14deg); }
+  20% { transform: rotate(-8deg); }
+  30% { transform: rotate(14deg); }
+  40% { transform: rotate(-4deg); }
+  50% { transform: rotate(10deg); }
+  60% { transform: rotate(0deg); }
+  100% { transform: rotate(0deg); }
+}
+
+.animate-wave {
+  animation: wave 2.5s infinite;
+  transform-origin: 70% 70%;
+}
+
+@keyframes music-bar {
+  0%, 100% { transform: scaleY(0.5); }
+  50% { transform: scaleY(1); }
+}
+
+.animate-music-bar-1 { animation: music-bar 1s infinite ease-in-out; }
+.animate-music-bar-2 { animation: music-bar 0.8s infinite ease-in-out 0.2s; }
+.animate-music-bar-3 { animation: music-bar 1.2s infinite ease-in-out 0.1s; }
 
 .glass-card {
   @apply bg-white/10 backdrop-blur-md border border-white/20;
