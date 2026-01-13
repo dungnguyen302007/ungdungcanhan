@@ -135,7 +135,6 @@ export const useStore = create<AppState>()(
         {
             name: 'expense-tracker-storage',
             version: 2, // Bump version to invalidate old corrupted data
-            translate: (storage) => storage, // Optional: needed for migration if we wanted to keep data, but here we want to reset if corrupt
             partialize: (state) => ({
                 transactions: state.transactions.filter(t => Number.isFinite(Number(t.amount))),
                 categories: state.categories,
