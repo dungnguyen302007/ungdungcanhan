@@ -21,6 +21,17 @@ function App() {
     }
   }, [userId, fetchTransactions]);
 
+  // NUCLEAR RESET: Force clear old data one time
+  useEffect(() => {
+    const hasWiped = localStorage.getItem('has_wiped_data_v4');
+    if (!hasWiped) {
+      console.log("Performing nuclear data wipe...");
+      localStorage.removeItem('expense-tracker-storage');
+      localStorage.setItem('has_wiped_data_v4', 'true');
+      window.location.reload();
+    }
+  }, []);
+
   // Daily weather notification at 8:00 AM
   useEffect(() => {
     if (!userId) return;
