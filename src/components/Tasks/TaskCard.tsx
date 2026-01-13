@@ -22,13 +22,7 @@ const PRIORITY_LABELS = {
 };
 
 export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
-    const { deleteTask, updateTaskStatus } = useStore();
-
-    // Determine next status for simple lifecycle click (optional UX)
-    const handleStatusClick = () => {
-        if (task.status === 'todo') updateTaskStatus(task.id, 'doing');
-        if (task.status === 'doing') updateTaskStatus(task.id, 'done');
-    };
+    const { deleteTask } = useStore();
 
     return (
         <div className="group relative bg-white/80 backdrop-blur-sm rounded-2xl p-4 shadow-sm border border-white/50 hover:shadow-md transition-all duration-300 hover:scale-[1.02] cursor-move animate-in fade-in slide-in-from-bottom-2">
