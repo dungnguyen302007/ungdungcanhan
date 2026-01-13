@@ -1,3 +1,6 @@
+
+export const MAX_TRANSACTION_AMOUNT = 100_000_000_000; // 100 Billion VND Safety Cap
+
 export type TransactionType = 'income' | 'expense';
 
 export interface Category {

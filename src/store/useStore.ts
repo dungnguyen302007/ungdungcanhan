@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { type Transaction, type Category, DEFAULT_CATEGORIES, type AppNotification } from '../types';
+import { type Transaction, type Category, DEFAULT_CATEGORIES, type AppNotification, MAX_TRANSACTION_AMOUNT } from '../types';
 import { db } from '../lib/firebase';
 import { collection, doc, setDoc, deleteDoc, updateDoc, getDocs, query, orderBy } from 'firebase/firestore';
 
@@ -132,11 +132,18 @@ export const useStore = create<AppState>()(
 
             clearNotifications: () => set({ notifications: [] }),
         }),
-        {
-            name: 'expense-tracker-storage',
-            version: 2, // Bump version to invalidate old corrupted data
+import { type Transaction, type Category, DEFAULT_CATEGORIES, type AppNotification, MAX_TRANSACTION_AMOUNT } from '../types';
+// ... (imports remain same, just ensure MAX_TRANSACTION_AMOUNT is imported)
+
+// ... inside persist config ...
+{
+    name: 'expense-tracker-storage',
+        version: 3, // Bump version to force clean up of huge numbers
             partialize: (state) => ({
-                transactions: state.transactions.filter(t => Number.isFinite(Number(t.amount))),
+                transactions: state.transactions.filter(t => {
+                    const val = Number(t.amount);
+                    return Number.isFinite(val) && val < MAX_TRANSACTION_AMOUNT;
+                }),
                 categories: state.categories,
                 userId: state.userId,
                 notifications: state.notifications,
