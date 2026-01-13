@@ -63,7 +63,7 @@ export const TopCategories: React.FC<TopCategoriesProps> = ({ transactions }) =>
                                 <div className="h-3 w-full bg-[#F1F5F9] rounded-full overflow-hidden">
                                     <div
                                         className={`h-full rounded-full ${design.color} transition-all duration-1000 ease-out`}
-                                        style={{ width: `${Math.min((amount / totalExpense) * 100, 100)}%` }}
+                                        style={{ width: `${totalExpense > 0 ? Math.min((amount / totalExpense) * 100, 100) : 0}%` }}
                                     ></div>
                                 </div>
                             </div>
