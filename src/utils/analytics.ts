@@ -15,14 +15,25 @@ export const getMonthTransactions = (
 export const calculateTotals = (transactions: Transaction[]) => {
     const income = transactions
         .filter((t) => t.type === 'income')
-        .reduce((sum, t) => sum + t.amount, 0);
+        .reduce((sum, t) => {
+            const val = Number(t.amount);
+            return sum + (Number.isFinite(val) ? val : 0);
+        }, 0);
     const expense = transactions
         .filter((t) => t.type === 'expense')
-        .reduce((sum, t) => sum + t.amount, 0);
+        .reduce((sum, t) => {
+            const val = Number(t.amount);
+            return sum + (Number.isFinite(val) ? val : 0);
+        }, 0);
+
+    // Safety check for final result
+    const safeIncome = Number.isFinite(income) ? income : 0;
+    const safeExpense = Number.isFinite(expense) ? expense : 0;
+
     return {
-        income,
-        expense,
-        balance: income - expense,
+        income: safeIncome,
+        expense: safeExpense,
+        balance: safeIncome - safeExpense,
     };
 };
 
@@ -38,7 +49,10 @@ export const getCategoryStats = (transactions: Transaction[]) => {
     const stats: Record<string, number> = {};
     transactions.forEach((t) => {
         if (t.type === 'expense') {
-            stats[t.categoryId] = (stats[t.categoryId] || 0) + t.amount;
+            const val = Number(t.amount);
+            if (Number.isFinite(val)) {
+                stats[t.categoryId] = (stats[t.categoryId] || 0) + val;
+            }
         }
     });
     return Object.entries(stats).map(([categoryId, total]) => ({
