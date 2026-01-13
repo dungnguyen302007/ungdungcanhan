@@ -135,7 +135,7 @@ export const useStore = create<AppState>()(
         {
             name: 'expense-tracker-storage',
             partialize: (state) => ({
-                transactions: state.transactions,
+                transactions: state.transactions.filter(t => Number.isFinite(Number(t.amount))),
                 categories: state.categories,
                 userId: state.userId,
                 notifications: state.notifications,

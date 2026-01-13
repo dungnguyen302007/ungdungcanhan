@@ -23,7 +23,10 @@ export const TopCategories: React.FC<TopCategoriesProps> = ({ transactions }) =>
     const categoryTotals = transactions
         .filter(t => t.type === 'expense')
         .reduce((acc, t) => {
-            acc[t.categoryId] = (acc[t.categoryId] || 0) + t.amount;
+            const val = Number(t.amount);
+            if (Number.isFinite(val)) {
+                acc[t.categoryId] = (acc[t.categoryId] || 0) + val;
+            }
             return acc;
         }, {} as Record<string, number>);
 
