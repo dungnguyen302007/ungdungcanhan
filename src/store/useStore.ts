@@ -132,13 +132,9 @@ export const useStore = create<AppState>()(
 
             clearNotifications: () => set({ notifications: [] }),
         }),
-import { type Transaction, type Category, DEFAULT_CATEGORIES, type AppNotification, MAX_TRANSACTION_AMOUNT } from '../types';
-// ... (imports remain same, just ensure MAX_TRANSACTION_AMOUNT is imported)
-
-// ... inside persist config ...
-{
-    name: 'expense-tracker-storage',
-        version: 3, // Bump version to force clean up of huge numbers
+        {
+            name: 'expense-tracker-storage',
+            version: 3,
             partialize: (state) => ({
                 transactions: state.transactions.filter(t => {
                     const val = Number(t.amount);
