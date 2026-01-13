@@ -134,7 +134,20 @@ export const useStore = create<AppState>()(
         }),
         {
             name: 'expense-tracker-storage',
-            version: 3,
+            version: 4, // Force reset everything to 0
+            migrate: (persistedState: any, version) => {
+                if (version < 4) {
+                    // Discard old state completely if version is less than 4
+                    return {
+                        transactions: [],
+                        categories: DEFAULT_CATEGORIES,
+                        userId: persistedState.userId || null,
+                        notifications: [],
+                        lastWeatherNotificationDate: null
+                    };
+                }
+                return persistedState;
+            },
             partialize: (state) => ({
                 transactions: state.transactions.filter(t => {
                     const val = Number(t.amount);
