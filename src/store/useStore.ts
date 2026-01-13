@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { type Transaction, type Category, DEFAULT_CATEGORIES, type AppNotification, MAX_TRANSACTION_AMOUNT } from '../types';
+import { type Transaction, type Category, DEFAULT_CATEGORIES, type AppNotification, type Task, MAX_TRANSACTION_AMOUNT } from '../types';
 import { db } from '../lib/firebase';
 import { collection, doc, setDoc, deleteDoc, updateDoc, getDocs, query, orderBy } from 'firebase/firestore';
 
@@ -24,6 +24,12 @@ interface AppState {
     addNotification: (notification: AppNotification) => void;
     markNotificationAsRead: (id: string) => void;
     clearNotifications: () => void;
+
+    // TASKS SLICE
+    tasks: Task[];
+    addTask: (task: Task) => void;
+    updateTaskStatus: (id: string, status: Task['status']) => void;
+    deleteTask: (id: string) => void;
 }
 
 export const useStore = create<AppState>()(
@@ -34,9 +40,25 @@ export const useStore = create<AppState>()(
             userId: null,
             notifications: [],
             lastWeatherNotificationDate: null,
+            tasks: [], // Initial state for tasks,
+
 
             setUserId: (id) => set({ userId: id }),
 
+            // ... (keep existing transaction methods) ...
+
+            // TASKS ACTIONS
+            addTask: (task) => set((state) => ({ tasks: [task, ...state.tasks] })),
+
+            updateTaskStatus: (id, status) => set((state) => ({
+                tasks: state.tasks.map(t => t.id === id ? { ...t, status } : t)
+            })),
+
+            deleteTask: (id) => set((state) => ({
+                tasks: state.tasks.filter(t => t.id !== id)
+            })),
+
+            // EXISTING METHODS START HERE
             fetchTransactions: async () => {
                 const { userId } = get();
                 if (!userId) return;
@@ -154,6 +176,7 @@ export const useStore = create<AppState>()(
                     return Number.isFinite(val) && val < MAX_TRANSACTION_AMOUNT;
                 }),
                 categories: state.categories,
+                tasks: state.tasks, // Persist tasks
                 userId: state.userId,
                 notifications: state.notifications,
                 lastWeatherNotificationDate: state.lastWeatherNotificationDate

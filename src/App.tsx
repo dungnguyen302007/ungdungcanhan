@@ -3,6 +3,7 @@ import { Sidebar } from './components/Layout/Sidebar';
 import { DashboardHome } from './components/Dashboard/DashboardHome';
 import { FinanceApp } from './components/Finance/FinanceApp';
 import { SettingsApp } from './components/Settings/SettingsApp';
+import { TasksApp } from './components/Tasks/TasksApp';
 import { Login } from './components/Auth/Login';
 import { useStore } from './store/useStore';
 import { Toaster, toast } from 'react-hot-toast';
@@ -139,9 +140,10 @@ function App() {
           {activeTab === 'dashboard' && <DashboardHome />}
           {activeTab === 'finance' && userId && <FinanceApp />}
           {activeTab === 'settings' && <SettingsApp />}
+          {activeTab === 'tasks' && <TasksApp />}
 
           {/* Placeholders for other tabs */}
-          {(activeTab === 'tasks' || activeTab === 'health') && (
+          {(activeTab === 'health') && (
             <div className="flex-1 flex items-center justify-center p-10">
               <div className="text-center space-y-4">
                 <div className="w-20 h-20 bg-slate-50 text-slate-200 rounded-3xl flex items-center justify-center mx-auto border-4 border-white shadow-soft-sm">

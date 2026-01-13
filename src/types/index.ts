@@ -3,6 +3,16 @@ export const MAX_TRANSACTION_AMOUNT = 100_000_000_000; // 100 Billion VND Safety
 
 export type TransactionType = 'income' | 'expense';
 
+export interface Task {
+    id: string;
+    title: string;
+    description?: string;
+    status: 'todo' | 'doing' | 'done';
+    priority: 'low' | 'medium' | 'high';
+    dueDate?: string; // ISO String
+    createdAt: number;
+}
+
 export interface Category {
     id: string;
     name: string;
