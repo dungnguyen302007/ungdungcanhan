@@ -11,9 +11,10 @@ interface TaskColumnProps {
     tasks: Task[];
     color: string;
     onAddClick?: () => void;
+    onEditTask?: (task: Task) => void;
 }
 
-export const TaskColumn: React.FC<TaskColumnProps> = ({ title, status, icon, tasks, color, onAddClick }) => {
+export const TaskColumn: React.FC<TaskColumnProps> = ({ title, status, icon, tasks, color, onAddClick, onEditTask }) => {
     const { updateTaskStatus } = useStore();
 
     // Minimal Drag & Drop placeholder logic (using standard HTML5 API)
@@ -63,7 +64,7 @@ export const TaskColumn: React.FC<TaskColumnProps> = ({ title, status, icon, tas
                         draggable
                         onDragStart={(e) => e.dataTransfer.setData('taskId', task.id)}
                     >
-                        <TaskCard task={task} />
+                        <TaskCard task={task} onEdit={onEditTask} />
                     </div>
                 ))}
 

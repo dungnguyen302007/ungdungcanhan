@@ -5,8 +5,11 @@ import {
     CheckSquare,
     Heart,
     Settings,
-    Play
+    Play,
+    Shield, // Import Shield icon
+    MessageCircle // Import MessagesCircle for chat
 } from 'lucide-react';
+import { useAuthStore } from '../../store/useAuthStore'; // Import auth store
 
 interface SidebarProps {
     activeTab: string;
@@ -14,22 +17,38 @@ interface SidebarProps {
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
-    const menuItems = [
-        { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
-        { id: 'finance', label: 'Tài chính', icon: Wallet },
-        { id: 'tasks', label: 'Công việc', icon: CheckSquare },
-        { id: 'health', label: 'Sức khỏe', icon: Heart },
-        { id: 'settings', label: 'Cài đặt', icon: Settings },
-    ];
+    const { user } = useAuthStore();
+
+    // Build menu items based on user role
+    const menuItems = [];
+
+    if (user?.role === 'admin') {
+        // Admin sees all tabs
+        menuItems.push(
+            { id: 'dashboard', label: 'Tổng quan', icon: LayoutDashboard },
+            { id: 'finance', label: 'Tài chính', icon: Wallet },
+            { id: 'tasks', label: 'Công việc', icon: CheckSquare },
+            { id: 'chat', label: 'Chat', icon: MessageCircle },
+            { id: 'health', label: 'Sức khỏe', icon: Heart },
+            { id: 'settings', label: 'Cài đặt', icon: Settings },
+            { id: 'admin', label: 'Quản trị', icon: Shield }
+        );
+    } else {
+        // Staff sees Tasks and Chat
+        menuItems.push(
+            { id: 'tasks', label: 'Công việc', icon: CheckSquare },
+            { id: 'chat', label: 'Chat', icon: MessageCircle }
+        );
+    }
 
     return (
         <aside className="flex flex-col w-64 bg-white/80 backdrop-blur-xl border-r border-slate-100 p-6 h-full transition-all">
-            {/* Brand */}
-            <div className="flex items-center gap-3 mb-10 px-2">
-                <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center text-white shadow-blue-glow">
-                    <LayoutDashboard className="w-6 h-6" />
+            {/* Header */}
+            <div className="flex items-center gap-4 mb-10">
+                <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-500 rounded-2xl flex items-center justify-center shadow-blue-glow shrink-0">
+                    <div className="w-7 h-7 bg-white/20 rounded-lg"></div>
                 </div>
-                <div>
+                <div className="flex-1">
                     <h1 className="font-black text-slate-900 tracking-tight leading-none text-left">MyLife</h1>
                     <p className="text-[10px] text-slate-400 font-bold text-left uppercase tracking-widest mt-1">Trung tâm năng suất</p>
                 </div>
@@ -67,14 +86,16 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
             <div className="flex items-center gap-3 px-2">
                 <div className="w-10 h-10 rounded-full border-2 border-blue-500 p-0.5">
                     <img
-                        src="https://api.dicebear.com/7.x/avataaars/svg?seed=AnhDung&backgroundColor=ffdfbf"
+                        src={user?.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.displayName || 'User'}`}
                         alt="Avatar"
                         className="w-full h-full rounded-full object-cover bg-amber-50"
                     />
                 </div>
                 <div className="flex flex-col text-left">
-                    <span className="text-[13px] font-black text-slate-900">Anh Dũng</span>
-                    <span className="text-[10px] text-blue-500 font-extrabold uppercase tracking-tighter">Gói Hội Viên</span>
+                    <span className="text-[13px] font-black text-slate-900 truncate max-w-[120px]">{user?.displayName || 'Khách'}</span>
+                    <span className="text-[10px] text-blue-500 font-extrabold uppercase tracking-tighter">
+                        {user?.role === 'admin' ? 'Quản trị viên' : 'Thành viên'}
+                    </span>
                 </div>
             </div>
         </aside>

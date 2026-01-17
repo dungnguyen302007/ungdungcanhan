@@ -1,4 +1,4 @@
-import { Clock, GripVertical, Trash2 } from 'lucide-react';
+import { Clock, GripVertical, Trash2, Pencil } from 'lucide-react';
 import type { Task } from '../../types';
 import { useStore } from '../../store/useStore';
 import { clsx } from 'clsx';
@@ -7,6 +7,7 @@ import { vi } from 'date-fns/locale';
 
 interface TaskCardProps {
     task: Task;
+    onEdit?: (task: Task) => void;
 }
 
 const PRIORITY_COLORS = {
@@ -21,7 +22,7 @@ const PRIORITY_LABELS = {
     low: 'Thong thả'
 };
 
-export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
+export const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit }) => {
     const { deleteTask } = useStore();
 
     return (
@@ -46,7 +47,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
                         {task.dueDate && (
                             <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 bg-slate-50 px-2 py-1 rounded-lg">
                                 <Clock size={10} />
-                                {format(new Date(task.dueDate), 'dd/MM', { locale: vi })}
+                                {format(new Date(task.dueDate), 'dd/MM HH:mm', { locale: vi })}
                             </div>
                         )}
 
@@ -62,8 +63,16 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task }) => {
                 </div>
             </div>
 
-            {/* Actions overlay */}
             <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        onEdit?.(task);
+                    }}
+                    className="p-1.5 bg-blue-50 text-blue-500 rounded-lg hover:bg-blue-100 transition-colors"
+                >
+                    <Pencil size={14} />
+                </button>
                 <button
                     onClick={(e) => {
                         e.stopPropagation();

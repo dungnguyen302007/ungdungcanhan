@@ -3,13 +3,30 @@ export const MAX_TRANSACTION_AMOUNT = 100_000_000_000; // 100 Billion VND Safety
 
 export type TransactionType = 'income' | 'expense';
 
+export type UserRole = 'admin' | 'staff' | 'pending';
+
+export interface AppUser {
+    uid: string;
+    email: string;
+    displayName: string;
+    photoURL?: string;
+    role: UserRole;
+    createdAt: number;
+}
+
 export interface Task {
     id: string;
     title: string;
     description?: string;
     status: 'todo' | 'doing' | 'done';
     priority: 'low' | 'medium' | 'high';
-    dueDate?: string; // ISO String
+    dueDate?: string; // ISO String for Date + Time
+    assigneeId?: string; // UID of the assigned user
+    creatorId?: string; // UID of the creator (Admin)
+    reminderTime?: 'none' | '1m' | '5m' | '15m' | '30m' | '45m' | '1h' | '2h' | '1d'; // Reminder before deadline
+    notified?: boolean; // Track if notification was sent
+    assigneeName?: string; // Cached for display
+    assigneeAvatar?: string; // Cached for display
     createdAt: number;
 }
 
@@ -39,7 +56,7 @@ export interface AppNotification {
     message: string;
     date: string;
     isRead: boolean;
-    type: 'weather' | 'system';
+    type: 'weather' | 'system' | 'deadline';
 }
 
 export const DEFAULT_CATEGORIES: Category[] = [

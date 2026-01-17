@@ -1,16 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useStore } from '../../store/useStore';
 import { TaskColumn } from './TaskColumn';
 import { AddTaskModal } from './AddTaskModal';
-import { ListTodo, Loader2, CheckCircle2 } from 'lucide-react';
+import type { Task } from '../../types';
+import { ListTodo, Clock, CheckCircle2 } from 'lucide-react';
+
+import { useAuthStore } from '../../store/useAuthStore'; // Import auth store
 
 export const TasksApp: React.FC = () => {
-    const { tasks } = useStore();
+    const { tasks, setupTasksListener } = useStore();
+    const { user } = useAuthStore(); // Get current user
     const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+    const [editingTask, setEditingTask] = useState<Task | undefined>(undefined);
 
-    const todoTasks = tasks.filter(t => t.status === 'todo');
-    const doingTasks = tasks.filter(t => t.status === 'doing');
-    const doneTasks = tasks.filter(t => t.status === 'done');
+    useEffect(() => {
+        const unsubscribe = setupTasksListener();
+        return () => unsubscribe(); // Cleanup on unmount
+    }, [setupTasksListener]);
+
+    // Filter tasks based on Role
+    const visibleTasks = tasks.filter(t => {
+        if (user?.role === 'admin') return true; // Admin sees all
+        return t.assigneeId === user?.uid; // Staff sees only assigned
+    });
+
+    const todoTasks = visibleTasks.filter(t => t.status === 'todo');
+    const doingTasks = visibleTasks.filter(t => t.status === 'doing');
+    const doneTasks = visibleTasks.filter(t => t.status === 'done');
 
     const completionRate = tasks.length > 0
         ? Math.round((doneTasks.length / tasks.length) * 100)
@@ -52,14 +68,22 @@ export const TasksApp: React.FC = () => {
                         color="bg-slate-500"
                         tasks={todoTasks}
                         onAddClick={() => setIsAddModalOpen(true)}
+                        onEditTask={(task) => {
+                            setEditingTask(task);
+                            setIsAddModalOpen(true);
+                        }}
                     />
 
                     <TaskColumn
                         title="Đang làm"
                         status="doing"
-                        icon={<Loader2 size={20} className="animate-spin" />}
+                        icon={<Clock size={20} />}
                         color="bg-blue-500"
                         tasks={doingTasks}
+                        onEditTask={(task) => {
+                            setEditingTask(task);
+                            setIsAddModalOpen(true);
+                        }}
                     />
 
                     <TaskColumn
@@ -68,11 +92,23 @@ export const TasksApp: React.FC = () => {
                         icon={<CheckCircle2 size={20} />}
                         color="bg-emerald-500"
                         tasks={doneTasks}
+                        onEditTask={(task) => {
+                            setEditingTask(task);
+                            setIsAddModalOpen(true);
+                        }}
                     />
                 </div>
             </div>
 
-            {isAddModalOpen && <AddTaskModal onClose={() => setIsAddModalOpen(false)} />}
+            {isAddModalOpen && (
+                <AddTaskModal
+                    taskToEdit={editingTask}
+                    onClose={() => {
+                        setIsAddModalOpen(false);
+                        setEditingTask(undefined);
+                    }}
+                />
+            )}
         </div>
     );
 };

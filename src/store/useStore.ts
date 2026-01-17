@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { type Transaction, type Category, DEFAULT_CATEGORIES, type AppNotification, type Task, MAX_TRANSACTION_AMOUNT } from '../types';
 import { db } from '../lib/firebase';
-import { collection, doc, setDoc, deleteDoc, updateDoc, getDocs, query, orderBy } from 'firebase/firestore';
+import { collection, doc, setDoc, deleteDoc, updateDoc, getDocs, query, orderBy, onSnapshot, where } from 'firebase/firestore';
 
 interface AppState {
     transactions: Transaction[];
@@ -21,15 +21,18 @@ interface AppState {
     addCategory: (category: Category) => void;
     resetData: () => void;
 
-    addNotification: (notification: AppNotification) => void;
+    addNotification: (notification: AppNotification) => Promise<void>;
     markNotificationAsRead: (id: string) => void;
     clearNotifications: () => void;
+    setupNotificationsListener: () => () => void;
 
     // TASKS SLICE
     tasks: Task[];
-    addTask: (task: Task) => void;
-    updateTaskStatus: (id: string, status: Task['status']) => void;
-    deleteTask: (id: string) => void;
+    setupTasksListener: () => () => void; // Returns unsubscribe function
+    addTask: (task: Task) => Promise<void>;
+    updateTask: (id: string, updates: Partial<Task>) => Promise<void>;
+    updateTaskStatus: (id: string, status: Task['status']) => Promise<void>;
+    deleteTask: (id: string) => Promise<void>;
 }
 
 export const useStore = create<AppState>()(
@@ -40,23 +43,72 @@ export const useStore = create<AppState>()(
             userId: null,
             notifications: [],
             lastWeatherNotificationDate: null,
-            tasks: [], // Initial state for tasks,
-
+            tasks: [], // Initial state for tasks
 
             setUserId: (id) => set({ userId: id }),
 
             // ... (keep existing transaction methods) ...
 
+            // Setup real-time listener for tasks
+            setupTasksListener: () => {
+                const q = query(collection(db, 'tasks'), orderBy('createdAt', 'desc'));
+
+                const unsubscribe = onSnapshot(q, (snapshot) => {
+                    const tasksFromFirestore: Task[] = [];
+                    snapshot.forEach((doc) => {
+                        tasksFromFirestore.push({ id: doc.id, ...doc.data() } as Task);
+                    });
+                    set({ tasks: tasksFromFirestore });
+                    console.log('[Tasks] Real-time update:', tasksFromFirestore.length, 'tasks');
+                }, (error) => {
+                    console.error("Error listening to tasks:", error);
+                });
+
+                return unsubscribe;
+            },
+
             // TASKS ACTIONS
-            addTask: (task) => set((state) => ({ tasks: [task, ...state.tasks] })),
+            addTask: async (task) => {
+                set((state) => ({ tasks: [task, ...state.tasks] }));
+                try {
+                    await setDoc(doc(db, 'tasks', task.id), task);
+                } catch (error) {
+                    console.error("Error creating task:", error);
+                }
+            },
 
-            updateTaskStatus: (id, status) => set((state) => ({
-                tasks: state.tasks.map(t => t.id === id ? { ...t, status } : t)
-            })),
+            updateTask: async (id, updates) => {
+                set((state) => ({
+                    tasks: state.tasks.map(t => t.id === id ? { ...t, ...updates } : t)
+                }));
+                try {
+                    await updateDoc(doc(db, 'tasks', id), updates);
+                } catch (error) {
+                    console.error("Error updating task:", error);
+                }
+            },
 
-            deleteTask: (id) => set((state) => ({
-                tasks: state.tasks.filter(t => t.id !== id)
-            })),
+            updateTaskStatus: async (id, status) => {
+                set((state) => ({
+                    tasks: state.tasks.map(t => t.id === id ? { ...t, status } : t)
+                }));
+                try {
+                    await updateDoc(doc(db, 'tasks', id), { status });
+                } catch (error) {
+                    console.error("Error updating task status:", error);
+                }
+            },
+
+            deleteTask: async (id) => {
+                set((state) => ({
+                    tasks: state.tasks.filter(t => t.id !== id)
+                }));
+                try {
+                    await deleteDoc(doc(db, 'tasks', id));
+                } catch (error) {
+                    console.error("Error deleting task:", error);
+                }
+            },
 
             // EXISTING METHODS START HERE
             fetchTransactions: async () => {
@@ -132,7 +184,11 @@ export const useStore = create<AppState>()(
 
             resetData: () => set({ transactions: [], categories: DEFAULT_CATEGORIES }),
 
-            addNotification: (notification) => {
+            addNotification: async (notification: AppNotification) => {
+                const userId = get().userId;
+                if (!userId) return;
+
+                // Add to local state
                 set((state) => {
                     const newState = {
                         notifications: [notification, ...state.notifications]
@@ -142,6 +198,16 @@ export const useStore = create<AppState>()(
                     }
                     return newState;
                 });
+
+                // Save to Firebase with userId
+                try {
+                    await setDoc(doc(db, 'notifications', notification.id), {
+                        ...notification,
+                        userId // Associate notification with user
+                    });
+                } catch (error) {
+                    console.error('Error adding notification:', error);
+                }
             },
 
             markNotificationAsRead: (id) => {
@@ -150,6 +216,38 @@ export const useStore = create<AppState>()(
                         n.id === id ? { ...n, isRead: true } : n
                     )
                 }));
+            },
+
+            setupNotificationsListener: () => {
+                const userId = get().userId;
+                if (!userId) return () => { };
+
+                const q = query(
+                    collection(db, 'notifications'),
+                    where('userId', '==', userId),
+                    orderBy('date', 'desc')
+                );
+
+                const unsubscribe = onSnapshot(q, (snapshot) => {
+                    const notificationsFromFirestore: AppNotification[] = [];
+                    snapshot.forEach((doc) => {
+                        const data = doc.data();
+                        notificationsFromFirestore.push({
+                            id: data.id,
+                            type: data.type,
+                            title: data.title,
+                            message: data.message,
+                            date: data.date,
+                            isRead: data.isRead
+                        });
+                    });
+                    set({ notifications: notificationsFromFirestore });
+                    console.log('[Notifications] Real-time update:', notificationsFromFirestore.length);
+                }, (error) => {
+                    console.error('Error listening to notifications:', error);
+                });
+
+                return unsubscribe;
             },
 
             clearNotifications: () => set({ notifications: [] }),

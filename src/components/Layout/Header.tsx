@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bell, X, CloudSun, LogOut, FileText } from 'lucide-react';
+import { Bell, X, CloudSun, LogOut, FileText, Clock } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -103,8 +103,13 @@ export const Header: React.FC<HeaderProps> = ({ onTabChange }) => {
                                                     <div className="absolute left-2 top-1/2 -translate-y-1/2 w-1.5 h-1.5 bg-blue-500 rounded-full"></div>
                                                 )}
                                                 <div className="flex gap-3">
-                                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${notification.type === 'weather' ? 'bg-amber-100 text-amber-600' : 'bg-blue-100 text-blue-600'}`}>
-                                                        {notification.type === 'weather' ? <CloudSun className="w-5 h-5" /> : <Bell className="w-5 h-5" />}
+                                                    <div className={`w-9 h-9 rounded-full flex items-center justify-center shrink-0 ${notification.type === 'weather' ? 'bg-amber-100 text-amber-600' :
+                                                            notification.type === 'deadline' ? 'bg-red-100 text-red-600' :
+                                                                'bg-blue-100 text-blue-600'
+                                                        }`}>
+                                                        {notification.type === 'weather' ? <CloudSun className="w-5 h-5" /> :
+                                                            notification.type === 'deadline' ? <Clock className="w-5 h-5" /> :
+                                                                <Bell className="w-5 h-5" />}
                                                     </div>
                                                     <div className="flex flex-col gap-0.5">
                                                         <p className="text-[13px] font-bold text-slate-800 leading-tight">{notification.title}</p>
