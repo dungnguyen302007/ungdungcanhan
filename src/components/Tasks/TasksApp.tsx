@@ -28,8 +28,8 @@ export const TasksApp: React.FC = () => {
     const doingTasks = visibleTasks.filter(t => t.status === 'doing');
     const doneTasks = visibleTasks.filter(t => t.status === 'done');
 
-    const completionRate = tasks.length > 0
-        ? Math.round((doneTasks.length / tasks.length) * 100)
+    const completionRate = visibleTasks.length > 0
+        ? Math.round((doneTasks.length / visibleTasks.length) * 100)
         : 0;
 
     return (
@@ -41,7 +41,7 @@ export const TasksApp: React.FC = () => {
                     <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full shadow-sm border border-slate-100">
                             <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
-                            <span className="text-xs font-bold text-slate-600">{tasks.length - doneTasks.length} đang chờ</span>
+                            <span className="text-xs font-bold text-slate-600">{visibleTasks.length - doneTasks.length} đang chờ</span>
                         </div>
                         <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full shadow-sm border border-slate-100">
                             <span className="text-xs font-bold text-slate-600">Hoàn thành {completionRate}%</span>

@@ -11,12 +11,12 @@ import { NotificationBell } from './components/Notifications/NotificationBell';
 import { useStore } from './store/useStore';
 import { Toaster, toast } from 'react-hot-toast';
 import { fetchWeather, formatWeatherNotification } from './utils/weather';
+import { playNotificationSound } from './utils/sound';
 import { Menu, X } from 'lucide-react';
 import { useAuthStore } from './store/useAuthStore';
 import { auth, db } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
-import type { AppUser } from './types';
 
 function App() {
   const { userId, fetchTransactions, lastWeatherNotificationDate, addNotification, setUserId } = useStore();
@@ -73,7 +73,7 @@ function App() {
 
   // Check for upcoming task deadlines and send notifications
   useEffect(() => {
-    const checkDeadlines = () => {
+    const checkDeadlines = async () => {
       const { tasks, updateTask, addNotification } = useStore.getState();
       const currentUser = useAuthStore.getState().user;
 
@@ -87,7 +87,7 @@ function App() {
 
       const now = Date.now();
 
-      tasks.forEach(task => {
+      tasks.forEach(async (task) => {
         console.log('[Task Check]', task.title, {
           dueDate: task.dueDate,
           status: task.status,
@@ -98,7 +98,10 @@ function App() {
         });
 
         // Skip if no deadline, already done, or already notified
-        if (!task.dueDate || task.status === 'done' || task.notified) return;
+        if (!task.dueDate || task.status === 'done' || task.notified) {
+          console.log('[Skip]', !task.dueDate ? 'No dueDate' : task.status === 'done' ? 'Task done' : 'Already notified');
+          return;
+        }
 
         // Notify if current user is EITHER the assignee OR the creator
         const isAssignee = task.assigneeId === currentUser.uid;
@@ -117,6 +120,7 @@ function App() {
         // Calculate reminder offset in minutes
         let reminderOffsetMinutes = 0;
         switch (task.reminderTime) {
+          case '0m': reminderOffsetMinutes = 0; break;
           case '1m': reminderOffsetMinutes = 1; break;
           case '5m': reminderOffsetMinutes = 5; break;
           case '15m': reminderOffsetMinutes = 15; break;
@@ -140,20 +144,25 @@ function App() {
         // If current time is past reminder time but before deadline
         if (now >= reminderTime && now < deadline) {
           // Format time label
-          const timeLabel = task.reminderTime === '1m' ? '1 phút' :
-            task.reminderTime === '5m' ? '5 phút' :
-              task.reminderTime === '15m' ? '15 phút' :
-                task.reminderTime === '30m' ? '30 phút' :
-                  task.reminderTime === '45m' ? '45 phút' :
-                    task.reminderTime === '1h' ? '1 giờ' :
-                      task.reminderTime === '2h' ? '2 giờ' : '1 ngày';
+          const timeLabel = task.reminderTime === '0m' ? 'ngay bây giờ' :
+            task.reminderTime === '1m' ? '1 phút' :
+              task.reminderTime === '5m' ? '5 phút' :
+                task.reminderTime === '15m' ? '15 phút' :
+                  task.reminderTime === '30m' ? '30 phút' :
+                    task.reminderTime === '45m' ? '45 phút' :
+                      task.reminderTime === '1h' ? '1 giờ' :
+                        task.reminderTime === '2h' ? '2 giờ' : '1 ngày';
 
           console.log('[SENDING NOTIFICATION]', task.title);
 
-          // Customize message based on role
-          const message = isAssignee
-            ? `Task "${task.title}" sẽ đến hạn trong ${timeLabel}`
-            : `Task "${task.title}" (đã giao cho người khác) sẽ đến hạn trong ${timeLabel}`;
+          // Customize message based on role and timing
+          const message = task.reminderTime === '0m'
+            ? (isAssignee
+              ? `Task "${task.title}" đang đến hạn ${timeLabel}!`
+              : `Task "${task.title}" (đã giao cho người khác) đang đến hạn ${timeLabel}!`)
+            : (isAssignee
+              ? `Task "${task.title}" sẽ đến hạn trong ${timeLabel}`
+              : `Task "${task.title}" (đã giao cho người khác) sẽ đến hạn trong ${timeLabel}`);
 
           // Send notification
           addNotification({
@@ -164,6 +173,9 @@ function App() {
             date: new Date().toISOString(),
             isRead: false
           });
+
+          // Play notification sound
+          await playNotificationSound();
 
           // Show toast notification for immediate visibility
           toast.error(`⏰ ${message}`, {
