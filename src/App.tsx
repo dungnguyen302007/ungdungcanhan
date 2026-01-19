@@ -107,7 +107,11 @@ function App() {
   // Check for upcoming task deadlines and send notifications
   useEffect(() => {
     const checkDeadlines = async () => {
-      const { tasks, updateTask, addNotification } = useStore.getState();
+      const state = useStore.getState();
+      const tasks = state.tasks;
+      const updateTask = state.updateTask;
+      const addNotification = state.addNotification;
+
       const currentUser = useAuthStore.getState().user;
 
       console.log('[Deadline Checker] Running...', {
