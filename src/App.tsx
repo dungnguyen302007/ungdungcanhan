@@ -6,6 +6,7 @@ import { SettingsApp } from './components/Settings/SettingsApp';
 import { TasksApp } from './components/Tasks/TasksApp';
 import { AdminDashboard } from './components/Admin/AdminDashboard';
 import { ChatPage } from './components/Chat/ChatPage';
+import { GlobalChatListener } from './components/Chat/GlobalChatListener';
 import { AuthLayout } from './components/Layout/AuthLayout';
 import { NotificationBell } from './components/Notifications/NotificationBell';
 import { useStore } from './store/useStore';
@@ -84,6 +85,15 @@ function App() {
       unsubNotifications();
     };
   }, [setUser, setLoading, setUserId]);
+
+  // Request notification permission when user logs in
+  useEffect(() => {
+    if (user && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().then(permission => {
+        console.log('Notification permission:', permission);
+      });
+    }
+  }, [user]);
 
   // If user is Admin -> Access everything
   // If user is Staff -> Access limited? (For now allow all tabs)
@@ -405,6 +415,7 @@ function App() {
 
         </div>
       </AuthLayout>
+      <GlobalChatListener />
       <Toaster position="top-right" />
     </>
   );

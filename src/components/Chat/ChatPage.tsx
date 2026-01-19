@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { collection, addDoc, onSnapshot, query, orderBy, where, getDocs } from 'firebase/firestore';
+import { collection, addDoc, onSnapshot, query, orderBy, where, getDocs, updateDoc, doc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuthStore } from '../../store/useAuthStore';
 import { Send, MessageCircle } from 'lucide-react';
@@ -70,6 +70,25 @@ export const ChatPage: React.FC = () => {
         return () => unsubscribe();
     }, [selectedConversation, user]);
 
+    // Automatically mark messages as read when viewing conversation
+    useEffect(() => {
+        if (!user || messages.length === 0) return;
+
+        const unreadMessages = messages.filter(
+            msg => !msg.isRead && msg.senderId !== user.uid && msg.conversationId === selectedConversation
+        );
+
+        if (unreadMessages.length > 0) {
+            const markRead = async () => {
+                const updatePromises = unreadMessages.map(msg =>
+                    updateDoc(doc(db, 'chat-messages', msg.id), { isRead: true })
+                );
+                await Promise.all(updatePromises);
+            };
+            markRead();
+        }
+    }, [messages, selectedConversation, user]);
+
     // Desktop notification
     const showDesktopNotification = (msg: ChatMessage) => {
         if ('Notification' in window && Notification.permission === 'granted') {
@@ -130,6 +149,28 @@ export const ChatPage: React.FC = () => {
                     const userData = userDoc.docs[0].data();
                     setConversationName(userData.displayName || 'User');
                 }
+            }
+        }
+
+        // Mark all messages in this conversation as read (for current user)
+        if (user) {
+            try {
+                const unreadQuery = query(
+                    collection(db, 'chat-messages'),
+                    where('conversationId', '==', convId),
+                    where('isRead', '==', false),
+                    where('senderId', '!=', user.uid)
+                );
+                const unreadSnapshot = await getDocs(unreadQuery);
+
+                // Update each unread message
+                const updatePromises = unreadSnapshot.docs.map((docSnapshot) =>
+                    updateDoc(doc(db, 'chat-messages', docSnapshot.id), { isRead: true })
+                );
+
+                await Promise.all(updatePromises);
+            } catch (error) {
+                console.error('[CHAT] Error marking messages as read:', error);
             }
         }
     };

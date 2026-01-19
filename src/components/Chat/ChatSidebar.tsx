@@ -20,6 +20,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
     const { user } = useAuthStore();
     const [users, setUsers] = useState<AppUser[]>([]);
     const [groups, setGroups] = useState<ChatGroup[]>([]);
+    const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
 
     // Load approved users
     useEffect(() => {
@@ -58,6 +59,31 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
         return () => unsubscribe();
     }, [user]);
 
+    // Track unread message counts
+    useEffect(() => {
+        if (!user) return;
+
+        const q = query(
+            collection(db, 'chat-messages'),
+            where('isRead', '==', false),
+            where('senderId', '!=', user.uid)
+        );
+
+        const unsubscribe = onSnapshot(q, (snapshot) => {
+            const counts: Record<string, number> = {};
+            snapshot.forEach((doc) => {
+                const data = doc.data();
+                const convId = data.conversationId;
+                counts[convId] = (counts[convId] || 0) + 1;
+            });
+            setUnreadCounts(counts);
+        }, (error) => {
+            console.error('[ChatSidebar] Listener error:', error);
+        });
+
+        return () => unsubscribe();
+    }, [user]);
+
     const getConversationId = (userId: string) => {
         if (!user) return '';
         return [user.uid, userId].sort().join('_');
@@ -89,9 +115,14 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                         <Users size={20} />
                     </div>
                     <div className="flex-1 text-left">
-                        <div className="font-bold text-slate-900">Chat Team</div>
+                        <div className={`${unreadCounts['team'] ? 'font-bold' : 'font-medium'} text-slate-900`}>Chat Team</div>
                         <div className="text-xs text-slate-500">Nhóm chung toàn công ty</div>
                     </div>
+                    {unreadCounts['team'] && unreadCounts['team'] > 0 && (
+                        <div className="bg-blue-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0">
+                            {unreadCounts['team']}
+                        </div>
+                    )}
                 </button>
 
                 {/* Groups */}
@@ -101,22 +132,31 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                             <Hash size={12} />
                             NHÓM DỰ ÁN
                         </div>
-                        {groups.map((group) => (
-                            <button
-                                key={group.id}
-                                onClick={() => onSelectConversation(`group_${group.id}`, 'group')}
-                                className={`w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors ${selectedConversation === `group_${group.id}` ? 'bg-blue-50' : ''
-                                    }`}
-                            >
-                                <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-blue-500 rounded-lg flex items-center justify-center text-white font-bold flex-shrink-0">
-                                    {group.name.charAt(0).toUpperCase()}
-                                </div>
-                                <div className="flex-1 text-left">
-                                    <div className="font-medium text-slate-900 text-sm">{group.name}</div>
-                                    <div className="text-xs text-slate-500">{group.members.length} thành viên</div>
-                                </div>
-                            </button>
-                        ))}
+                        {groups.map((group) => {
+                            const groupConvId = `group_${group.id}`;
+                            const unreadCount = unreadCounts[groupConvId] || 0;
+                            return (
+                                <button
+                                    key={group.id}
+                                    onClick={() => onSelectConversation(groupConvId, 'group')}
+                                    className={`w-full flex items-center gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors ${selectedConversation === groupConvId ? 'bg-blue-50' : ''
+                                        }`}
+                                >
+                                    <div className="w-10 h-10 bg-gradient-to-br from-green-400 to-blue-500 rounded-lg flex items-center justify-center text-white font-bold flex-shrink-0">
+                                        {group.name.charAt(0).toUpperCase()}
+                                    </div>
+                                    <div className="flex-1 text-left">
+                                        <div className={`${unreadCount > 0 ? 'font-bold' : 'font-medium'} text-slate-900 text-sm`}>{group.name}</div>
+                                        <div className="text-xs text-slate-500">{group.members.length} thành viên</div>
+                                    </div>
+                                    {unreadCount > 0 && (
+                                        <div className="bg-blue-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0">
+                                            {unreadCount}
+                                        </div>
+                                    )}
+                                </button>
+                            );
+                        })}
                     </div>
                 )}
 
@@ -133,6 +173,7 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                     ) : (
                         users.map((chatUser) => {
                             const conversationId = getConversationId(chatUser.uid);
+                            const unreadCount = unreadCounts[conversationId] || 0;
                             return (
                                 <button
                                     key={chatUser.uid}
@@ -146,9 +187,14 @@ export const ChatSidebar: React.FC<ChatSidebarProps> = ({
                                         className="w-10 h-10 rounded-full object-cover bg-slate-100 flex-shrink-0"
                                     />
                                     <div className="flex-1 text-left">
-                                        <div className="font-medium text-slate-900 text-sm">{chatUser.displayName}</div>
+                                        <div className={`${unreadCount > 0 ? 'font-bold' : 'font-medium'} text-slate-900 text-sm`}>{chatUser.displayName}</div>
                                         <div className="text-xs text-slate-500">{chatUser.email}</div>
                                     </div>
+                                    {unreadCount > 0 && (
+                                        <div className="bg-blue-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center flex-shrink-0">
+                                            {unreadCount}
+                                        </div>
+                                    )}
                                 </button>
                             );
                         })

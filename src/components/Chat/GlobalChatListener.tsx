@@ -69,14 +69,30 @@ export const GlobalChatListener: React.FC = () => {
             let isRelevant = false;
             let title = '';
 
+            console.log('[GlobalChatListener] Processing message:', {
+                conversationType: data.conversationType,
+                conversationId: data.conversationId,
+                currentUserId: user.uid,
+                senderName: data.senderName
+            });
+
             if (data.conversationType === 'team') {
                 isRelevant = true;
                 title = `Team Chat: ${data.senderName}`;
             } else if (data.conversationType === 'private') {
                 // Check if I am part of this private conversation
-                if (data.conversationId.includes(user.uid)) {
+                const includesCheck = data.conversationId.includes(user.uid);
+                console.log('[GlobalChatListener] Private chat check:', {
+                    conversationId: data.conversationId,
+                    userId: user.uid,
+                    includes: includesCheck
+                });
+
+                if (includesCheck) {
                     isRelevant = true;
                     title = `Tin nhắn từ ${data.senderName}`;
+                } else {
+                    console.log('[GlobalChatListener] SKIPPED: User not in conversation');
                 }
             } else if (data.conversationType === 'group') {
                 // Optimistic check: we assume if they are receiving the message query result (which is global here)
@@ -90,6 +106,8 @@ export const GlobalChatListener: React.FC = () => {
                 title = `Nhóm: ${data.senderName}`;
             }
 
+            console.log('[GlobalChatListener] isRelevant:', isRelevant);
+
             if (isRelevant) {
                 // Play sound
                 playNotificationSound();
@@ -99,7 +117,7 @@ export const GlobalChatListener: React.FC = () => {
                     const notification = new Notification(title, {
                         body: data.message,
                         icon: data.senderAvatar || undefined,
-                        tag: data.conversationId
+                        tag: `${data.conversationId}-${doc.id}` // Unique tag for each message
                     });
 
                     notification.onclick = () => {
