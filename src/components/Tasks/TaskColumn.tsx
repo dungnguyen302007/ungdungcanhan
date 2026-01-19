@@ -56,8 +56,8 @@ export const TaskColumn: React.FC<TaskColumnProps> = ({ title, status, icon, tas
                 )}
             </div>
 
-            {/* Tasks Container */}
-            <div className="flex-1 bg-slate-50/50 rounded-[2rem] border border-white/50 p-4 space-y-3 min-h-[200px]">
+            {/* Tasks Container - with scroll */}
+            <div className="flex-1 bg-slate-50/50 rounded-[2rem] border border-white/50 p-4 space-y-3 min-h-[200px] overflow-y-auto max-h-[calc(100vh-280px)]">
                 {tasks.map(task => (
                     <div
                         key={task.id}

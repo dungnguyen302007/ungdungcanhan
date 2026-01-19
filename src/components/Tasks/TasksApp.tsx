@@ -21,7 +21,8 @@ export const TasksApp: React.FC = () => {
     // Filter tasks based on Role
     const visibleTasks = tasks.filter(t => {
         if (user?.role === 'admin') return true; // Admin sees all
-        return t.assigneeId === user?.uid; // Staff sees only assigned
+        // Regular users see tasks they created OR tasks assigned to them
+        return t.creatorId === user?.uid || t.assigneeId === user?.uid;
     });
 
     const todoTasks = visibleTasks.filter(t => t.status === 'todo');

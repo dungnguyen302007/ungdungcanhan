@@ -28,11 +28,24 @@ export const NotificationBell: React.FC = () => {
         };
     }, [isOpen]);
 
+    // Mark all as read when opening dropdown
+    const handleToggle = () => {
+        setIsOpen(!isOpen);
+        if (!isOpen && unreadCount > 0) {
+            // Mark all unread notifications as read
+            notifications.forEach(notification => {
+                if (!notification.isRead) {
+                    markNotificationAsRead(notification.id);
+                }
+            });
+        }
+    };
+
     return (
         <div className="relative" ref={dropdownRef}>
             {/* Bell Icon Button */}
             <button
-                onClick={() => setIsOpen(!isOpen)}
+                onClick={handleToggle}
                 className="relative p-2 hover:bg-slate-100 rounded-xl transition-colors"
             >
                 <Bell size={22} className="text-slate-600" />

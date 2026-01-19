@@ -22,7 +22,7 @@ interface AppState {
     resetData: () => void;
 
     addNotification: (notification: AppNotification) => Promise<void>;
-    markNotificationAsRead: (id: string) => void;
+    markNotificationAsRead: (id: string) => Promise<void>;
     clearNotifications: () => void;
     setupNotificationsListener: () => () => void;
 
@@ -89,13 +89,55 @@ export const useStore = create<AppState>()(
             },
 
             updateTaskStatus: async (id, status) => {
+                const { tasks, userId } = get();
+                const task = tasks.find(t => t.id === id);
+
+                // Optimistic update
                 set((state) => ({
                     tasks: state.tasks.map(t => t.id === id ? { ...t, status } : t)
                 }));
+
                 try {
+                    // Update task status in Firestore
                     await updateDoc(doc(db, 'tasks', id), { status });
+
+                    // If task is marked as done, trigger celebration!
+                    if (status === 'done' && task) {
+                        // Play celebration sound
+                        const { playCelebrationSound } = await import('../utils/sound');
+                        playCelebrationSound();
+
+                        // Trigger confetti animation
+                        const confetti = (await import('canvas-confetti')).default;
+                        confetti({
+                            particleCount: 100,
+                            spread: 70,
+                            origin: { y: 0.6 },
+                            colors: ['#10b981', '#3b82f6', '#f59e0b', '#ef4444', '#8b5cf6']
+                        });
+
+                        // If current user is NOT the creator, notify creator
+                        if (task.creatorId && task.creatorId !== userId) {
+                            // Save notification directly to Firebase with creator's userId
+                            const notificationData = {
+                                id: `task-completed-${id}-${Date.now()}`,
+                                type: 'system',
+                                title: '✅ Công việc hoàn thành!',
+                                message: `"${task.title}" đã được hoàn thành`,
+                                date: new Date().toISOString(),
+                                isRead: false,
+                                userId: task.creatorId // Save to creator's notification list
+                            };
+
+                            await setDoc(doc(db, 'notifications', notificationData.id), notificationData);
+                        }
+                    }
                 } catch (error) {
                     console.error("Error updating task status:", error);
+                    // Revert optimistic update if Firestore update fails
+                    set((state) => ({
+                        tasks: state.tasks.map(t => t.id === id ? { ...t, status: task?.status || t.status } : t) // Revert to original status
+                    }));
                 }
             },
 
@@ -210,12 +252,22 @@ export const useStore = create<AppState>()(
                 }
             },
 
-            markNotificationAsRead: (id) => {
+            markNotificationAsRead: async (id) => {
+                // Update local state
                 set((state) => ({
                     notifications: state.notifications.map((n) =>
                         n.id === id ? { ...n, isRead: true } : n
                     )
                 }));
+
+                // Update in Firebase
+                try {
+                    await updateDoc(doc(db, 'notifications', id), {
+                        isRead: true
+                    });
+                } catch (error) {
+                    console.error('Error marking notification as read:', error);
+                }
             },
 
             setupNotificationsListener: () => {
@@ -224,8 +276,7 @@ export const useStore = create<AppState>()(
 
                 const q = query(
                     collection(db, 'notifications'),
-                    where('userId', '==', userId),
-                    orderBy('date', 'desc')
+                    where('userId', '==', userId)
                 );
 
                 const unsubscribe = onSnapshot(q, (snapshot) => {
@@ -241,6 +292,8 @@ export const useStore = create<AppState>()(
                             isRead: data.isRead
                         });
                     });
+                    // Sort by date in code (newest first)
+                    notificationsFromFirestore.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
                     set({ notifications: notificationsFromFirestore });
                     console.log('[Notifications] Real-time update:', notificationsFromFirestore.length);
                 }, (error) => {

@@ -16,14 +16,37 @@ import { Menu, X } from 'lucide-react';
 import { useAuthStore } from './store/useAuthStore';
 import { auth, db } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 function App() {
-  const { userId, fetchTransactions, lastWeatherNotificationDate, addNotification, setUserId } = useStore();
+  const { userId, fetchTransactions, lastWeatherNotificationDate, addNotification, setUserId, notifications } = useStore();
   const { setUser, setLoading, user } = useAuthStore();
 
   const [activeTab, setActiveTab] = useState<'dashboard' | 'finance' | 'tasks' | 'chat' | 'health' | 'settings' | 'admin'>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Show toast for unread deadline notifications when user logs in/refreshes
+  useEffect(() => {
+    const unreadDeadlineNotifs = notifications.filter(n =>
+      !n.isRead && n.type === 'deadline'
+    );
+
+    // Only show toasts if there are unread notifications and user is logged in
+    if (unreadDeadlineNotifs.length > 0 && user) {
+      unreadDeadlineNotifs.forEach(notif => {
+        toast.error(`⏰ ${notif.message}`, {
+          duration: 5000,
+          position: 'top-right',
+          style: {
+            background: '#FEE2E2',
+            color: '#991B1B',
+            fontWeight: 'bold',
+            border: '2px solid #FCA5A5'
+          }
+        });
+      });
+    }
+  }, [notifications, user]);
 
   // Sync user auth state with Firestore and setup listeners
   useEffect(() => {
@@ -87,20 +110,20 @@ function App() {
 
       const now = Date.now();
 
-      tasks.forEach(async (task) => {
+      for (const task of tasks) {
         console.log('[Task Check]', task.title, {
           dueDate: task.dueDate,
           status: task.status,
-          notified: task.notified,
+          notifiedUsers: task.notifiedUsers,
           reminderTime: task.reminderTime,
           assigneeId: task.assigneeId,
           currentUserId: currentUser.uid
         });
 
-        // Skip if no deadline, already done, or already notified
-        if (!task.dueDate || task.status === 'done' || task.notified) {
-          console.log('[Skip]', !task.dueDate ? 'No dueDate' : task.status === 'done' ? 'Task done' : 'Already notified');
-          return;
+        // Skip if no deadline or already done
+        if (!task.dueDate || task.status === 'done') {
+          console.log('[Skip]', !task.dueDate ? 'No dueDate' : 'Task done');
+          continue;
         }
 
         // Notify if current user is EITHER the assignee OR the creator
@@ -109,11 +132,14 @@ function App() {
 
         if (!isAssignee && !isCreator) {
           console.log('[Skip] Not assignee or creator');
-          return;
+          continue;
         }
 
+        // Don't skip the entire task check here - we need to send notifications to OTHER users too!
+        // The individual user check is done later in the filter
+
         // Skip if no reminder set
-        if (!task.reminderTime || task.reminderTime === 'none') return;
+        if (!task.reminderTime || task.reminderTime === 'none') continue;
 
         const deadline = new Date(task.dueDate).getTime();
 
@@ -129,7 +155,7 @@ function App() {
           case '1h': reminderOffsetMinutes = 60; break;
           case '2h': reminderOffsetMinutes = 120; break;
           case '1d': reminderOffsetMinutes = 1440; break;
-          default: return;
+          default: continue;
         }
 
         const reminderTime = deadline - (reminderOffsetMinutes * 60 * 1000);
@@ -138,11 +164,29 @@ function App() {
           now: new Date(now).toLocaleString('vi-VN'),
           deadline: new Date(deadline).toLocaleString('vi-VN'),
           reminderTime: new Date(reminderTime).toLocaleString('vi-VN'),
-          shouldNotify: now >= reminderTime && now < deadline
+          reminderType: task.reminderTime,
+          nowMs: now,
+          deadlineMs: deadline,
+          diff: deadline - now,
+          diffMinutes: (deadline - now) / 60000
         });
 
         // If current time is past reminder time but before deadline
-        if (now >= reminderTime && now < deadline) {
+        // Special case for '0m': notify AT deadline (not before), within 1 minute after
+        const shouldNotify = task.reminderTime === '0m'
+          ? now >= deadline && now <= deadline + (60 * 1000)
+          : now >= reminderTime && now < deadline;
+
+        console.log('[Should Notify?]', task.title, {
+          shouldNotify,
+          reason: task.reminderTime === '0m'
+            ? `0m: ${now} >= ${deadline} AND ${now} <= ${deadline + 60000}`
+            : `Other: ${now} >= ${reminderTime} AND ${now} < ${deadline}`
+        });
+
+        if (shouldNotify) {
+          console.log('[SENDING NOTIFICATION]', task.title);
+
           // Format time label
           const timeLabel = task.reminderTime === '0m' ? 'ngay bây giờ' :
             task.reminderTime === '1m' ? '1 phút' :
@@ -151,48 +195,76 @@ function App() {
                   task.reminderTime === '30m' ? '30 phút' :
                     task.reminderTime === '45m' ? '45 phút' :
                       task.reminderTime === '1h' ? '1 giờ' :
-                        task.reminderTime === '2h' ? '2 giờ' : '1 ngày';
+                        task.reminderTime === '2h' ? '2 giờ' :
+                          task.reminderTime === '1d' ? '1 ngày' : task.reminderTime;
 
-          console.log('[SENDING NOTIFICATION]', task.title);
+          // Send notification to BOTH creator and assignee (save to Firebase)
+          const usersToNotify = [task.creatorId, task.assigneeId].filter(uid =>
+            uid && !task.notifiedUsers?.includes(uid)
+          );
 
-          // Customize message based on role and timing
-          const message = task.reminderTime === '0m'
-            ? (isAssignee
-              ? `Task "${task.title}" đang đến hạn ${timeLabel}!`
-              : `Task "${task.title}" (đã giao cho người khác) đang đến hạn ${timeLabel}!`)
-            : (isAssignee
+          console.log('[USERS TO NOTIFY]', {
+            usersToNotify,
+            creator: task.creatorId,
+            assignee: task.assigneeId,
+            alreadyNotified: task.notifiedUsers,
+            currentUser: currentUser.uid
+          });
+
+          for (const userId of usersToNotify) {
+            const isAssigneeNotif = userId === task.assigneeId;
+            const message = isAssigneeNotif
               ? `Task "${task.title}" sẽ đến hạn trong ${timeLabel}`
-              : `Task "${task.title}" (đã giao cho người khác) sẽ đến hạn trong ${timeLabel}`);
+              : `Task "${task.title}" (đã giao cho ${task.assigneeId === task.creatorId ? 'bạn' : 'người khác'}) sẽ đến hạn trong ${timeLabel}`;
 
-          // Send notification
-          addNotification({
-            id: `task-${task.id}-${Date.now()}`,
-            type: 'deadline',
-            title: '⏰ Sắp đến hạn!',
-            message,
-            date: new Date().toISOString(),
-            isRead: false
-          });
+            // Save directly to Firebase for each user
+            const notificationId = `task-${task.id}-${userId}-${Date.now()}`;
 
-          // Play notification sound
-          await playNotificationSound();
+            console.log('[SAVING NOTIFICATION TO FIREBASE]', {
+              notificationId,
+              userId,
+              isAssignee: userId === task.assigneeId,
+              isCreator: userId === task.creatorId,
+              message
+            });
 
-          // Show toast notification for immediate visibility
-          toast.error(`⏰ ${message}`, {
-            duration: 5000,
-            position: 'top-right',
-            style: {
-              background: '#FEE2E2',
-              color: '#991B1B',
-              fontWeight: 'bold',
-              border: '2px solid #FCA5A5'
+            await setDoc(doc(db, 'notifications', notificationId), {
+              id: notificationId,
+              type: 'deadline',
+              title: '⏰ Sắp đến hạn!',
+              message,
+              date: new Date().toISOString(),
+              isRead: false,
+              userId
+            });
+
+            console.log('[NOTIFICATION SAVED]', notificationId);
+
+            // If it's current user, also show toast and sound
+            if (userId === currentUser.uid) {
+              await playNotificationSound();
+              toast.error(`⏰ ${message}`, {
+                duration: 5000,
+                position: 'top-right',
+                style: {
+                  background: '#FEE2E2',
+                  color: '#991B1B',
+                  fontWeight: 'bold',
+                  border: '2px solid #FCA5A5'
+                }
+              });
             }
-          });
+          }
 
-          // Mark as notified
-          updateTask(task.id, { notified: true });
+          // CRITICAL FIX: Mark ALL users who received notifications
+          // We sent to everyone in usersToNotify, so mark them all
+          const updatedNotifiedUsers = [
+            ...(task.notifiedUsers || []),
+            ...usersToNotify.filter((uid): uid is string => Boolean(uid))
+          ];
+          await updateTask(task.id, { notifiedUsers: updatedNotifiedUsers });
         }
-      });
+      }
     };
 
     // Check immediately

@@ -15,12 +15,23 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ onClose, taskToEdit 
     const { addTask, updateTask } = useStore();
     const { user } = useAuthStore();
 
+    // Get current datetime in format for datetime-local input
+    const getCurrentDateTime = () => {
+        const now = new Date();
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const hours = String(now.getHours()).padStart(2, '0');
+        const minutes = String(now.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+    };
+
     const [title, setTitle] = useState('');
     const [description, setDescription] = useState('');
     const [priority, setPriority] = useState<Task['priority']>('medium');
-    const [dueDate, setDueDate] = useState('');
+    const [dueDate, setDueDate] = useState(getCurrentDateTime()); // Default to now
     const [assigneeId, setAssigneeId] = useState('');
-    const [reminderTime, setReminderTime] = useState<Task['reminderTime']>('none');
+    const [reminderTime, setReminderTime] = useState<Task['reminderTime']>('0m'); // Default to "immediately"
     const [users, setUsers] = useState<AppUser[]>([]);
 
     useEffect(() => {
@@ -28,24 +39,22 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ onClose, taskToEdit 
             setTitle(taskToEdit.title);
             setDescription(taskToEdit.description || '');
             setPriority(taskToEdit.priority);
-            setDueDate(taskToEdit.dueDate || '');
+            setDueDate(taskToEdit.dueDate || getCurrentDateTime());
             setAssigneeId(taskToEdit.assigneeId || '');
-            setReminderTime(taskToEdit.reminderTime || 'none');
+            setReminderTime(taskToEdit.reminderTime || '0m');
         }
     }, [taskToEdit]);
 
-    // Fetch users for assignment if admin
+    // Fetch users for assignment (all users can assign tasks)
     useEffect(() => {
-        if (user?.role === 'admin') {
-            const fetchUsers = async () => {
-                const querySnapshot = await getDocs(collection(db, 'users'));
-                const userList: AppUser[] = [];
-                querySnapshot.forEach((doc) => userList.push(doc.data() as AppUser));
-                setUsers(userList);
-            };
-            fetchUsers();
-        }
-    }, [user]);
+        const fetchUsers = async () => {
+            const querySnapshot = await getDocs(collection(db, 'users'));
+            const userList: AppUser[] = [];
+            querySnapshot.forEach((doc) => userList.push(doc.data() as AppUser));
+            setUsers(userList);
+        };
+        fetchUsers();
+    }, []);
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -61,8 +70,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ onClose, taskToEdit 
                 priority,
                 dueDate: dueDate || undefined,
                 assigneeId: finalAssigneeId,
-                reminderTime,
-                notified: false
+                reminderTime
             });
         } else {
             const newTask: Task = {
@@ -75,8 +83,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ onClose, taskToEdit 
                 assigneeId: finalAssigneeId,
                 creatorId: user?.uid,
                 createdAt: Date.now(),
-                reminderTime,
-                notified: false
+                reminderTime
             };
             addTask(newTask);
         }
@@ -186,8 +193,8 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({ onClose, taskToEdit 
                             </div>
                         )}
 
-                        {/* Assignee Dropdown (Admin Only) */}
-                        {user?.role === 'admin' && (
+                        {/* Assignee Dropdown - All users can assign tasks */}
+                        {users.length > 0 && (
                             <div className="space-y-2">
                                 <label className="text-xs font-bold uppercase tracking-wider text-slate-400 ml-1">Giao việc cho</label>
                                 <div className="relative">

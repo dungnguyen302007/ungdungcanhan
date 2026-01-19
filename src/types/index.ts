@@ -24,7 +24,7 @@ export interface Task {
     assigneeId?: string; // UID of the assigned user
     creatorId?: string; // UID of the creator (Admin)
     reminderTime?: 'none' | '0m' | '1m' | '5m' | '15m' | '30m' | '45m' | '1h' | '2h' | '1d'; // Reminder before deadline
-    notified?: boolean; // Track if notification was sent
+    notifiedUsers?: string[]; // Array of user IDs who have been notified
     assigneeName?: string; // Cached for display
     assigneeAvatar?: string; // Cached for display
     createdAt: number;

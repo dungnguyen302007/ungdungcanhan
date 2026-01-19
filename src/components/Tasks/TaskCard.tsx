@@ -1,6 +1,7 @@
 import { Clock, GripVertical, Trash2, Pencil } from 'lucide-react';
 import type { Task } from '../../types';
 import { useStore } from '../../store/useStore';
+import { useAuthStore } from '../../store/useAuthStore';
 import { clsx } from 'clsx';
 import { format } from 'date-fns';
 import { vi } from 'date-fns/locale';
@@ -24,6 +25,10 @@ const PRIORITY_LABELS = {
 
 export const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit }) => {
     const { deleteTask } = useStore();
+    const { user } = useAuthStore();
+
+    // Only task creator can edit/delete
+    const isCreator = task.creatorId === user?.uid;
 
     return (
         <div className="group relative bg-white/80 backdrop-blur-sm rounded-2xl p-4 shadow-sm border border-white/50 hover:shadow-md transition-all duration-300 hover:scale-[1.02] cursor-move animate-in fade-in slide-in-from-bottom-2">
@@ -63,26 +68,29 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onEdit }) => {
                 </div>
             </div>
 
-            <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onEdit?.(task);
-                    }}
-                    className="p-1.5 bg-blue-50 text-blue-500 rounded-lg hover:bg-blue-100 transition-colors"
-                >
-                    <Pencil size={14} />
-                </button>
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        if (window.confirm('Xóa công việc này?')) deleteTask(task.id);
-                    }}
-                    className="p-1.5 bg-rose-50 text-rose-500 rounded-lg hover:bg-rose-100 transition-colors"
-                >
-                    <Trash2 size={14} />
-                </button>
-            </div>
+            {/* Edit/Delete buttons - Only visible to creator */}
+            {isCreator && (
+                <div className="absolute top-2 right-2 flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onEdit?.(task);
+                        }}
+                        className="p-1.5 bg-blue-50 text-blue-500 rounded-lg hover:bg-blue-100 transition-colors"
+                    >
+                        <Pencil size={14} />
+                    </button>
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm('Xóa công việc này?')) deleteTask(task.id);
+                        }}
+                        className="p-1.5 bg-rose-50 text-rose-500 rounded-lg hover:bg-rose-100 transition-colors"
+                    >
+                        <Trash2 size={14} />
+                    </button>
+                </div>
+            )}
         </div>
     );
 };

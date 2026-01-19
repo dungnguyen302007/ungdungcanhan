@@ -52,3 +52,44 @@ export const playNotificationSound = async () => {
         console.error('[Sound] Error playing notification sound:', error);
     }
 };
+
+// Play celebration sound when task is completed
+export const playCelebrationSound = async () => {
+    try {
+        const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+
+        if (audioContext.state === 'suspended') {
+            await audioContext.resume();
+        }
+
+        const now = audioContext.currentTime;
+
+        // Create a cheerful melody
+        const notes = [
+            { freq: 523.25, time: 0, duration: 0.15 },     // C5
+            { freq: 659.25, time: 0.15, duration: 0.15 },  // E5
+            { freq: 783.99, time: 0.3, duration: 0.15 },   // G5
+            { freq: 1046.5, time: 0.45, duration: 0.3 }    // C6
+        ];
+
+        notes.forEach(note => {
+            const oscillator = audioContext.createOscillator();
+            const gainNode = audioContext.createGain();
+
+            oscillator.type = 'sine';
+            oscillator.frequency.setValueAtTime(note.freq, now + note.time);
+            gainNode.gain.setValueAtTime(0.3, now + note.time);
+            gainNode.gain.exponentialRampToValueAtTime(0.01, now + note.time + note.duration);
+
+            oscillator.connect(gainNode);
+            gainNode.connect(audioContext.destination);
+
+            oscillator.start(now + note.time);
+            oscillator.stop(now + note.time + note.duration);
+        });
+
+        console.log('[Sound] Celebration sound played!');
+    } catch (error) {
+        console.error('[Sound] Error playing celebration sound:', error);
+    }
+};
