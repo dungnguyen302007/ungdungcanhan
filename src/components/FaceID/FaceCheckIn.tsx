@@ -3,7 +3,7 @@ import * as faceapi from 'face-api.js';
 import { Camera, CheckCircle, AlertCircle } from 'lucide-react';
 import { loadModels } from '../../utils/faceService';
 import { useStore } from '../../store/useStore';
-import { doc, getDoc, collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, collection, addDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { toast } from 'react-hot-toast';
 
@@ -18,25 +18,48 @@ export const FaceCheckIn: React.FC = () => {
     const [isMatched, setIsMatched] = useState<boolean | null>(null);
     const [checking, setChecking] = useState(false);
 
+    // New State for Advanced Flow
+    const [todayRecord, setTodayRecord] = useState<any>(null);
+    const [actionType, setActionType] = useState<'check-in' | 'check-out'>('check-in');
+
     useEffect(() => {
         const start = async () => {
             if (!userId) return;
 
-            // Load models
+            // Load Models
             await loadModels();
 
-            // Fetch user descriptor
+            // 1. Fetch User Face Descriptor
             const userDoc = await getDoc(doc(db, 'users', userId));
-            if (userDoc.exists() && userDoc.data().faceDescriptor) {
-                // Convert array back to Float32Array
-                setUserDescriptor(new Float32Array(userDoc.data().faceDescriptor));
-                setInitializing(false);
-                startVideo();
-                setMessage("Vui lòng nhìn vào camera để chấm công");
-            } else {
+            if (!userDoc.exists() || !userDoc.data().faceDescriptor) {
                 setMessage("Bạn chưa đăng ký khuôn mặt. Vui lòng đăng ký trước.");
                 setInitializing(false);
+                return;
             }
+            setUserDescriptor(new Float32Array(userDoc.data().faceDescriptor));
+
+            // 2. Check Today's Attendance Record
+            const today = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD"
+            const recordId = `${userId}_${today}`;
+            const recordDoc = await getDoc(doc(db, 'attendance_days', recordId));
+
+            if (recordDoc.exists()) {
+                setTodayRecord(recordDoc.data());
+                // If checked in but not checked out -> Next action is Check-out
+                if (recordDoc.data().checkInTime && !recordDoc.data().checkOutTime) {
+                    setActionType('check-out');
+                    setMessage("Chào bạn! Nhìn vào camera để Check-out 🏠");
+                } else if (recordDoc.data().checkOutTime) {
+                    setMessage("Bạn đã hoàn thành công việc hôm nay! ✅");
+                    // Optional: Allow re-checkin? For now, just show status
+                }
+            } else {
+                setActionType('check-in');
+                setMessage("Chào buổi sáng! Nhìn vào camera để Check-in ☀️");
+            }
+
+            setInitializing(false);
+            startVideo();
         };
         start();
 
@@ -64,27 +87,27 @@ export const FaceCheckIn: React.FC = () => {
     };
 
     const handleVideoPlay = () => {
+        // ... (Keep existing detection loop logic, just change handleCheckInSuccess call)
         const interval = setInterval(async () => {
             if (videoRef.current && canvasRef.current && userDescriptor && !checking && !isMatched) {
+                // If today is fully done, stop checking
+                if (todayRecord?.checkOutTime) return;
+
                 setChecking(true);
 
-                // Detect face
                 const detection = await faceapi.detectSingleFace(videoRef.current)
                     .withFaceLandmarks()
                     .withFaceDescriptor();
 
                 if (detection) {
-                    // Draw box
                     const dims = faceapi.matchDimensions(canvasRef.current, videoRef.current, true);
                     const resizedResult = faceapi.resizeResults(detection, dims);
                     faceapi.draw.drawDetections(canvasRef.current, resizedResult);
 
-                    // Compare
                     const distance = faceapi.euclideanDistance(detection.descriptor, userDescriptor);
-                    // threshold 0.5 or 0.6
                     if (distance < 0.5) {
                         setIsMatched(true);
-                        handleCheckInSuccess();
+                        handleProccessAttendance(); // Call new handler
                         clearInterval(interval);
                     }
                 } else {
@@ -93,51 +116,107 @@ export const FaceCheckIn: React.FC = () => {
                 }
                 setChecking(false);
             }
-        }, 1000); // Check every 1s
-
+        }, 1000);
         return () => clearInterval(interval);
     };
 
-    const handleCheckInSuccess = async () => {
-        // Play success sound
+    const handleProccessAttendance = async () => {
+        if (!userId) return;
+        const now = new Date();
+        const today = now.toISOString().split('T')[0];
+        const recordId = `${userId}_${today}`;
+
+        let notifMessage = "";
+        let notifTitle = "";
+
+        // Play Sound & Confetti
         const { playCelebrationSound } = await import('../../utils/sound');
         playCelebrationSound();
-
-        // Confetti
         const confetti = (await import('canvas-confetti')).default;
-        confetti({
-            particleCount: 150,
-            spread: 70,
-            origin: { y: 0.6 },
-            colors: ['#10b981', '#34d399']
-        });
+        confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 }, colors: ['#10b981', '#34d399'] });
 
-        toast.success("Chấm công thành công! 🎉");
-        setMessage("✅ Chấm công thành công!");
+        try {
+            if (actionType === 'check-in') {
+                // LOGIC CHECK-IN
+                const { calculateLateMinutes } = await import('../../utils/attendanceUtils');
+                const lateMinutes = calculateLateMinutes(now);
 
-        // Save log
-        if (userId) {
-            try {
-                await addDoc(collection(db, 'attendance_logs'), {
+                notifTitle = lateMinutes > 0 ? "Check-in Trễ ⚠️" : "Check-in Thành Công ✅";
+                notifMessage = lateMinutes > 0
+                    ? `Bạn đi trễ ${lateMinutes} phút. Cố gắng hơn nhé!`
+                    : `Tuyệt vời! Bạn đã đến đúng giờ.`;
+
+                await setDoc(doc(db, 'attendance_days', recordId), {
+                    id: recordId,
                     userId,
-                    timestamp: serverTimestamp(),
-                    type: 'check-in',
-                    method: 'face-id'
+                    date: today,
+                    checkInTime: serverTimestamp(),
+                    checkOutTime: null,
+                    details: {
+                        lateMinutes,
+                        earlyLeaveMinutes: 0,
+                        totalWorkHours: 0
+                    },
+                    status: lateMinutes > 0 ? 'late' : 'present',
+                    logs: [{ time: new Date(), type: 'check-in', method: 'face-id' }]
+                }, { merge: true });
+
+                setActionType('check-out'); // Switch to next step
+
+            } else {
+                // LOGIC CHECK-OUT
+                const { calculateEarlyLeaveMinutes, calculateTotalWorkHours } = await import('../../utils/attendanceUtils');
+
+                // Need checkInTime to calculate totals. If from state it might be old, but we can trust firestore or state if refreshed.
+                // Better use server time, but for calculation we need approximation
+                const checkInDate = todayRecord?.checkInTime?.toDate ? todayRecord.checkInTime.toDate() : now; // Fallback?
+
+                const earlyMinutes = calculateEarlyLeaveMinutes(now);
+                const totalHours = calculateTotalWorkHours(checkInDate, now);
+
+                notifTitle = "Check-out Thành Công 🏠";
+                notifMessage = `Tổng giờ làm: ${totalHours}h. ${earlyMinutes > 0 ? `Về sớm ${earlyMinutes} phút.` : "Hẹn gặp lại mai!"}`;
+
+                // Update record
+                // We use arrayUnion to append log, but update fields
+                await updateDoc(doc(db, 'attendance_days', recordId), {
+                    checkOutTime: serverTimestamp(),
+                    'details.earlyLeaveMinutes': earlyMinutes,
+                    'details.totalWorkHours': totalHours,
+                    // If already late, keep late. If not late but early leave -> 'early' (or 'late-early' if both)
+                    // Complexity: status update logic... lets keep simple for now or fetch logs to update status
                 });
-            } catch (e) {
-                console.error("Log error:", e);
             }
+
+            // Show Notification
+            toast.success(notifTitle + ": " + notifMessage, { duration: 5000 });
+            setMessage(notifMessage);
+
+            // Save Notification to collection
+            await addDoc(collection(db, 'notifications'), {
+                userId,
+                type: 'system',
+                title: notifTitle,
+                message: notifMessage,
+                date: new Date().toISOString(),
+                isRead: false
+            });
+
+        } catch (e) {
+            console.error("Attendance Error:", e);
+            toast.error("Lỗi xử lý chấm công");
         }
 
-        // Stop video after success
-        setTimeout(stopVideo, 2000);
+        setTimeout(stopVideo, 3000);
     };
 
     return (
         <div className="bg-white rounded-3xl p-8 shadow-lg max-w-2xl mx-auto text-center">
             <h2 className="text-2xl font-black text-slate-900 flex items-center justify-center gap-3 mb-6">
                 <Camera className="w-8 h-8 text-blue-500" />
-                Chấm công khuôn mặt
+                {initializing ? "Đang tải..." :
+                    todayRecord?.checkOutTime ? "Hoàn thành hôm nay" :
+                        actionType === 'check-in' ? "Check-in Vào Làm" : "Check-out Ra Về"}
             </h2>
 
             {initializing ? (
@@ -149,9 +228,6 @@ export const FaceCheckIn: React.FC = () => {
                 <div className="bg-amber-50 text-amber-600 p-6 rounded-2xl">
                     <AlertCircle className="w-10 h-10 mx-auto mb-2" />
                     <p className="font-bold">{message}</p>
-                    <button className="mt-4 px-4 py-2 bg-amber-500 text-white rounded-lg font-bold">
-                        Đăng ký ngay
-                    </button>
                 </div>
             ) : (
                 <div className="space-y-6">
@@ -173,11 +249,18 @@ export const FaceCheckIn: React.FC = () => {
                                 </div>
                             </div>
                         )}
+
+                        {/* Status Badge Overlay */}
+                        <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-md px-3 py-1 rounded-lg text-white font-bold text-xs uppercase">
+                            {actionType} Mode
+                        </div>
                     </div>
 
-                    <p className={`text-lg font-bold ${isMatched ? 'text-green-600' : 'text-slate-600'}`}>
-                        {isMatched ? "Xác thực thành công!" : "Đang quét..."}
-                    </p>
+                    <div className="bg-blue-50 p-4 rounded-xl">
+                        <p className={`text-lg font-bold ${isMatched ? 'text-green-600' : 'text-slate-700'}`}>
+                            {message}
+                        </p>
+                    </div>
                 </div>
             )}
         </div>
