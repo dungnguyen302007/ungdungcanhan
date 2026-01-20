@@ -2,6 +2,7 @@ import React from 'react';
 import { Search, Bell, Calendar, Plus, Activity, CloudSun, Music } from 'lucide-react';
 import { useStore } from '../../store/useStore';
 import { calculateTotals, getMonthTransactions } from '../../utils/analytics';
+import { getGreeting, getGreetingEmoji } from '../../utils/greeting';
 
 export const DashboardHome: React.FC = () => {
     // Safe data access
@@ -41,8 +42,8 @@ export const DashboardHome: React.FC = () => {
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6">
                 <div className="text-left space-y-1">
                     <h2 className="text-3xl lg:text-4xl font-black text-slate-900 flex items-center gap-3">
-                        Chào buổi sáng, Anh Dũng
-                        <span className="text-4xl">👋</span>
+                        {getGreeting()}, Anh Dũng
+                        <span className="text-4xl">{getGreetingEmoji()}</span>
                     </h2>
                     <p className="text-slate-400 text-sm font-bold uppercase">Hôm nay là {new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
                 </div>

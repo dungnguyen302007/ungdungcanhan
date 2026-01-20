@@ -362,12 +362,8 @@ function App() {
 
           {/* Main Content Area */}
           <main className="flex-1 flex flex-col min-w-0 h-screen overflow-y-auto bg-slate-50/50">
-            {/* Desktop Header */}
-            <div className="hidden lg:flex items-center justify-between px-8 py-4 bg-white/80 backdrop-blur-md border-b border-slate-100 sticky top-0 z-50">
-              <div>
-                <h2 className="text-2xl font-black text-slate-900">Chào buổi sáng, {user?.displayName || 'Anh Dũng'} 👋</h2>
-                <p className="text-sm text-slate-500 font-medium">Hôm nay là thứ {new Date().toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'long' })}</p>
-              </div>
+            {/* Desktop Header - Removed duplicate greeting, using NotificationBell only */}
+            <div className="hidden lg:flex items-center justify-end px-8 py-4 bg-white/80 backdrop-blur-md border-b border-slate-100 sticky top-0 z-50">
               <NotificationBell />
             </div>
 
