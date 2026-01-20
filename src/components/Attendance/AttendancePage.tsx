@@ -3,8 +3,11 @@ import { FaceCheckIn } from '../FaceID/FaceCheckIn';
 import { FaceRegistration } from '../FaceID/FaceRegistration';
 import { AttendanceHistory } from './AttendanceHistory';
 
+import { useAuthStore } from '../../store/useAuthStore';
+
 export const AttendancePage: React.FC = () => {
     const [mode, setMode] = useState<'checkin' | 'register'>('checkin');
+    const { user } = useAuthStore();
 
     return (
         <div className="space-y-6 max-w-2xl mx-auto">
@@ -17,7 +20,9 @@ export const AttendancePage: React.FC = () => {
                 </button>
                 <button
                     onClick={() => setMode('register')}
-                    className={`px-6 py-2 rounded-full font-bold transition-all ${mode === 'register' ? 'bg-blue-500 text-white shadow-lg' : 'bg-white text-slate-500 hover:bg-slate-50'}`}
+                    disabled={user?.role === 'pending'}
+                    className={`px-6 py-2 rounded-full font-bold transition-all ${mode === 'register' ? 'bg-blue-500 text-white shadow-lg' : 'bg-white text-slate-500 hover:bg-slate-50'} ${user?.role === 'pending' ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    title={user?.role === 'pending' ? 'Tài khoản cần được duyệt trước' : ''}
                 >
                     Đăng ký Face ID
                 </button>

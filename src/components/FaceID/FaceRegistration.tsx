@@ -17,6 +17,19 @@ export const FaceRegistration: React.FC = () => {
     const [descriptor, setDescriptor] = useState<Float32Array | null>(null);
     const [videoError, setVideoError] = useState(false);
 
+    // Permission check
+    if (!user || user.role === 'pending') {
+        return (
+            <div className="bg-white rounded-3xl p-8 shadow-lg max-w-2xl mx-auto text-center">
+                <AlertCircle className="w-16 h-16 text-amber-500 mx-auto mb-4" />
+                <h2 className="text-2xl font-black text-slate-900 mb-2">Tài khoản chưa được duyệt</h2>
+                <p className="text-slate-500">
+                    Vui lòng liên hệ Admin để duyệt tài khoản trước khi đăng ký Face ID.
+                </p>
+            </div>
+        );
+    }
+
     useEffect(() => {
         const start = async () => {
             const loaded = await loadModels();
