@@ -139,13 +139,27 @@ git commit -m "type: brief description"
 
 See [Commit Guidelines](#commit-guidelines) below.
 
-### 6. Push to Your Fork
+### 6. Local Testing (MANDATORY)
+
+Before pushing any code, you MUST verify it specifically on your local environment:
+1.  **Build Check:**
+    ```bash
+    npm run build
+    ```
+    *Ensure the build completes without errors.*
+
+2.  **Functionality Check:**
+    *   Open `http://localhost:5173`.
+    *   Walk through usage scenarios related to your changes.
+    *   Check Browser Console (F12) for any red errors.
+
+### 7. Push to Your Fork
 
 ```bash
 git push origin feature/your-feature-name
 ```
 
-### 7. Create Pull Request
+### 8. Create Pull Request
 
 Go to GitHub and create a Pull Request from your branch to `main`.
 
