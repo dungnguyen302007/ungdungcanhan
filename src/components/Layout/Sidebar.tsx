@@ -7,7 +7,8 @@ import {
     Settings,
     Play,
     Shield, // Import Shield icon
-    MessageCircle // Import MessagesCircle for chat
+    MessageCircle, // Import MessagesCircle for chat
+    Scan // Import Scan icon for attendance
 } from 'lucide-react';
 import { useAuthStore } from '../../store/useAuthStore'; // Import auth store
 
@@ -31,6 +32,8 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
             { id: 'chat', label: 'Chat', icon: MessageCircle },
             { id: 'health', label: 'Sức khỏe', icon: Heart },
             { id: 'settings', label: 'Cài đặt', icon: Settings },
+            { id: 'settings', label: 'Cài đặt', icon: Settings },
+            { id: 'attendance', label: 'Chấm công', icon: Scan },
             { id: 'admin', label: 'Quản trị', icon: Shield }
         );
     } else {

@@ -1,11 +1,11 @@
 import React from 'react';
 import { Header } from './Header';
-import { LayoutDashboard, Calendar, PieChart, Settings } from 'lucide-react';
+import { LayoutDashboard, Calendar, PieChart, Settings, Scan } from 'lucide-react';
 
 interface AppShellProps {
     children: React.ReactNode;
     activeTab?: string;
-    onTabChange?: (tab: 'overview' | 'analytics' | 'history' | 'settings') => void;
+    onTabChange?: (tab: 'overview' | 'analytics' | 'history' | 'settings' | 'attendance') => void;
 }
 
 export const AppShell: React.FC<AppShellProps> = ({ children, activeTab = 'overview', onTabChange }) => {
@@ -38,6 +38,13 @@ export const AppShell: React.FC<AppShellProps> = ({ children, activeTab = 'overv
                 >
                     <PieChart className="w-6 h-6" strokeWidth={activeTab === 'analytics' ? 2.5 : 2} fill={activeTab === 'analytics' ? 'currentColor' : 'none'} />
                     <span className="text-[11px] font-black tracking-tighter capitalize">Báo cáo</span>
+                </button>
+                <button
+                    onClick={() => onTabChange?.('attendance')}
+                    className={`flex flex-col items-center gap-1.5 transition-all ${activeTab === 'attendance' ? 'text-blue-500 scale-105' : 'text-slate-400'}`}
+                >
+                    <Scan className="w-6 h-6" strokeWidth={activeTab === 'attendance' ? 2.5 : 2} fill={activeTab === 'attendance' ? 'currentColor' : 'none'} />
+                    <span className="text-[11px] font-black tracking-tighter capitalize">Chấm công</span>
                 </button>
                 <button
                     onClick={() => onTabChange?.('settings')}

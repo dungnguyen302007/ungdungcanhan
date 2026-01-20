@@ -19,11 +19,13 @@ import { auth, db } from './lib/firebase';
 import { onAuthStateChanged } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 
+import { AttendancePage } from './components/Attendance/AttendancePage';
+
 function App() {
   const { userId, fetchTransactions, lastWeatherNotificationDate, addNotification, setUserId, notifications } = useStore();
   const { setUser, setLoading, user } = useAuthStore();
 
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'finance' | 'tasks' | 'chat' | 'health' | 'settings' | 'admin'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'finance' | 'tasks' | 'chat' | 'health' | 'settings' | 'admin' | 'attendance'>('dashboard');
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   // Show toast for unread deadline notifications when user logs in/refreshes
@@ -110,7 +112,6 @@ function App() {
       const state = useStore.getState();
       const tasks = state.tasks;
       const updateTask = state.updateTask;
-      const addNotification = state.addNotification;
 
       const currentUser = useAuthStore.getState().user;
 
@@ -392,6 +393,7 @@ function App() {
             {activeTab === 'tasks' && <TasksApp />}
             {activeTab === 'chat' && <ChatPage />}
             {activeTab === 'admin' && <AdminDashboard />}
+            {activeTab === 'attendance' && <AttendancePage />}
 
             {/* Placeholders for other tabs */}
             {(activeTab === 'health') && (
