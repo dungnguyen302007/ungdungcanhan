@@ -1,8 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as faceapi from 'face-api.js';
-import { Camera, CheckCircle, AlertCircle } from 'lucide-react';
+import { Camera, CheckCircle, CheckCircle2, AlertCircle, MapPin } from 'lucide-react';
 import { loadModels } from '../../utils/faceService';
 import { useStore } from '../../store/useStore';
+import { validateLocation, formatLocationForStorage } from '../../utils/locationUtils';
 import { doc, getDoc, collection, addDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { toast } from 'react-hot-toast';
@@ -21,6 +22,10 @@ export const FaceCheckIn: React.FC = () => {
     // New State for Advanced Flow
     const [todayRecord, setTodayRecord] = useState<any>(null);
     const [actionType, setActionType] = useState<'check-in' | 'check-out'>('check-in');
+
+    // GPS State
+    const [locationStatus, setLocationStatus] = useState<'checking' | 'valid' | 'invalid' | null>(null);
+    const [locationData, setLocationData] = useState<any>(null);
 
     useEffect(() => {
         const start = async () => {
@@ -129,7 +134,33 @@ export const FaceCheckIn: React.FC = () => {
         let notifMessage = "";
         let notifTitle = "";
 
-        // Play Sound & Confetti
+        // Step 1: Verify GPS Location
+        setLocationStatus('checking');
+        try {
+            const locationResult = await validateLocation();
+            setLocationData(locationResult);
+
+            if (!locationResult.isValid) {
+                setLocationStatus('invalid');
+                toast.error(locationResult.message, { duration: 5000 });
+                setMessage(locationResult.message);
+                return; // Block check-in
+            }
+
+            setLocationStatus('valid');
+
+            // Success notification for valid location
+            if (locationResult.location.accuracy > 50) {
+                toast(locationResult.message, { icon: '⚠️', duration: 3000 });
+            }
+        } catch (error: any) {
+            setLocationStatus('invalid');
+            toast.error(error.message || 'Không thể xác định vị trí', { duration: 5000 });
+            setMessage('Vui lòng bật định vị và thử lại');
+            return; // Block check-in if GPS fails
+        }
+
+        // Step 2: Play Sound & Confetti
         const { playCelebrationSound } = await import('../../utils/sound');
         playCelebrationSound();
         const confetti = (await import('canvas-confetti')).default;
@@ -152,6 +183,13 @@ export const FaceCheckIn: React.FC = () => {
                     date: today,
                     checkInTime: serverTimestamp(),
                     checkOutTime: null,
+                    ...(locationData && {
+                        checkInLocation: formatLocationForStorage(
+                            locationData.location,
+                            locationData.distance,
+                            locationData.isValid
+                        )
+                    }),
                     details: {
                         lateMinutes,
                         earlyLeaveMinutes: 0,
@@ -181,6 +219,13 @@ export const FaceCheckIn: React.FC = () => {
                 // We use arrayUnion to append log, but update fields
                 await updateDoc(doc(db, 'attendance_days', recordId), {
                     checkOutTime: serverTimestamp(),
+                    ...(locationData && {
+                        checkOutLocation: formatLocationForStorage(
+                            locationData.location,
+                            locationData.distance,
+                            locationData.isValid
+                        )
+                    }),
                     'details.earlyLeaveMinutes': earlyMinutes,
                     'details.totalWorkHours': totalHours,
                     // If already late, keep late. If not late but early leave -> 'early' (or 'late-early' if both)
@@ -231,35 +276,72 @@ export const FaceCheckIn: React.FC = () => {
                 </div>
             ) : (
                 <div className="space-y-6">
-                    <div className="relative rounded-2xl overflow-hidden bg-slate-900 aspect-video flex items-center justify-center">
+                    <div className="relative">
                         <video
                             ref={videoRef}
                             autoPlay
                             muted
                             onPlay={handleVideoPlay}
-                            className={`absolute inset-0 w-full h-full object-cover mirror ${isMatched ? 'border-4 border-green-500' : ''}`}
+                            className={`w-full rounded-2xl shadow-lg mirror ${isMatched ? 'border-4 border-green-500' : ''}`}
                             style={{ transform: 'scaleX(-1)' }}
                         />
-                        <canvas ref={canvasRef} className="absolute inset-0 w-full h-full pointer-events-none" style={{ transform: 'scaleX(-1)' }} />
+                        <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full pointer-events-none" style={{ transform: 'scaleX(-1)' }} />
+
+                        {/* GPS Status Indicator */}
+                        {locationStatus && (
+                            <div className={`absolute top-4 right-4 px-3 py-2 rounded-lg font-bold text-xs flex items-center gap-2 ${locationStatus === 'checking' ? 'bg-blue-100 text-blue-700' :
+                                locationStatus === 'valid' ? 'bg-green-100 text-green-700' :
+                                    'bg-red-100 text-red-700'
+                                }`}>
+                                <MapPin className="w-4 h-4" />
+                                {locationStatus === 'checking' && 'Đang kiểm tra vị trí...'}
+                                {locationStatus === 'valid' && `✓ Trong phạm vi (${locationData?.distance}m)`}
+                                {locationStatus === 'invalid' && '✗ Ngoài phạm vi'}
+                            </div>
+                        )}
+
+                        {actionType === 'check-in' && (
+                            <div className="absolute top-4 left-4 bg-blue-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-lg">
+                                CHECK-IN MODE
+                            </div>
+                        )}
+                        {actionType === 'check-out' && (
+                            <div className="absolute top-4 left-4 bg-orange-500 text-white px-4 py-2 rounded-lg font-bold text-sm shadow-lg">
+                                CHECK-OUT MODE
+                            </div>
+                        )}
 
                         {isMatched && (
-                            <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center backdrop-blur-sm animate-fade-in">
+                            <div className="absolute inset-0 bg-green-500/20 flex items-center justify-center backdrop-blur-sm animate-fade-in rounded-2xl">
                                 <div className="bg-white p-4 rounded-full shadow-2xl scale-150">
                                     <CheckCircle className="w-16 h-16 text-green-500" />
                                 </div>
                             </div>
                         )}
-
-                        {/* Status Badge Overlay */}
-                        <div className="absolute top-4 right-4 bg-black/50 backdrop-blur-md px-3 py-1 rounded-lg text-white font-bold text-xs uppercase">
-                            {actionType} Mode
-                        </div>
                     </div>
 
-                    <div className="bg-blue-50 p-4 rounded-xl">
-                        <p className={`text-lg font-bold ${isMatched ? 'text-green-600' : 'text-slate-700'}`}>
-                            {message}
-                        </p>
+                    <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 text-center">
+                        {!userDescriptor && (
+                            <p className="text-slate-600 font-medium">{message}</p>
+                        )}
+                        {initializing && userDescriptor && (
+                            <p className="text-blue-600 font-bold">{message}</p>
+                        )}
+                        {!initializing && userDescriptor && !isMatched && (
+                            <p className="text-slate-600 font-medium">{message}</p>
+                        )}
+                        {isMatched && (
+                            <div className="flex items-center justify-center gap-2 text-green-600">
+                                <CheckCircle2 className="w-6 h-6" />
+                                <p className="font-black text-lg">{message}</p>
+                            </div>
+                        )}
+                        {checking && (
+                            <div className="flex items-center justify-center gap-3 mt-4">
+                                <div className="animate-spin w-5 h-5 border-4 border-blue-500 border-t-transparent rounded-full"></div>
+                                <span className="text-slate-500">Đang phân tích...</span>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}

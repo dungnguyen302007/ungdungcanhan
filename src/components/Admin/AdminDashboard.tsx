@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
 import { UserManagement } from './UserManagement';
-import { Users, FileText } from 'lucide-react';
+import { LocationSettings } from './LocationSettings';
+import { Users, FileText, MapPin } from 'lucide-react';
 
 export const AdminDashboard: React.FC = () => {
-    const [activeTab, setActiveTab] = useState<'users' | 'content'>('users');
+    const [activeTab, setActiveTab] = useState<'users' | 'location' | 'content'>('users');
 
     return (
         <div className="p-6 space-y-6">
             <div className="flex items-center justify-between">
                 <div>
                     <h1 className="text-2xl font-black text-slate-800">Trung Tâm Quản Trị</h1>
-                    <p className="text-slate-500 text-sm font-medium mt-1">Quản lý người dùng và nội dung hệ thống</p>
+                    <p className="text-slate-500 text-sm font-medium mt-1">Quản lý người dùng và cài đặt hệ thống</p>
                 </div>
             </div>
 
@@ -19,18 +20,28 @@ export const AdminDashboard: React.FC = () => {
                 <button
                     onClick={() => setActiveTab('users')}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'users'
-                            ? 'bg-white text-blue-600 shadow-sm'
-                            : 'text-slate-500 hover:text-slate-700'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700'
                         }`}
                 >
                     <Users className="w-4 h-4" />
                     Quản lý Thành viên
                 </button>
                 <button
+                    onClick={() => setActiveTab('location')}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'location'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700'
+                        }`}
+                >
+                    <MapPin className="w-4 h-4" />
+                    Vị trí Văn phòng
+                </button>
+                <button
                     onClick={() => setActiveTab('content')}
                     className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${activeTab === 'content'
-                            ? 'bg-white text-blue-600 shadow-sm'
-                            : 'text-slate-500 hover:text-slate-700'
+                        ? 'bg-white text-blue-600 shadow-sm'
+                        : 'text-slate-500 hover:text-slate-700'
                         }`}
                 >
                     <FileText className="w-4 h-4" />
@@ -39,9 +50,9 @@ export const AdminDashboard: React.FC = () => {
             </div>
 
             <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 min-h-[500px]">
-                {activeTab === 'users' ? (
-                    <UserManagement />
-                ) : (
+                {activeTab === 'users' && <UserManagement />}
+                {activeTab === 'location' && <LocationSettings />}
+                {activeTab === 'content' && (
                     <div className="flex items-center justify-center h-full text-slate-400 font-bold">
                         Tính năng đang phát triển...
                     </div>
@@ -50,3 +61,4 @@ export const AdminDashboard: React.FC = () => {
         </div>
     );
 };
+
