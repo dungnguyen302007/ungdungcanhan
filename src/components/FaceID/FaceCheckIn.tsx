@@ -299,7 +299,7 @@ export const FaceCheckIn: React.FC = () => {
                 </div>
             ) : (
                 <div className="space-y-4 md:space-y-6">
-                    <div className="relative rounded-2xl overflow-hidden">
+                    <div className="relative rounded-2xl overflow-hidden max-w-md mx-auto">
                         <video
                             ref={videoRef}
                             autoPlay
@@ -307,7 +307,11 @@ export const FaceCheckIn: React.FC = () => {
                             muted
                             onPlay={handleVideoPlay}
                             className={`w-full rounded-2xl ${isMatched ? 'border-4 border-green-500' : ''}`}
-                            style={{ transform: 'scaleX(-1)', maxHeight: '70vh' }}
+                            style={{
+                                transform: 'scaleX(-1)',
+                                aspectRatio: '3/4',
+                                objectFit: 'cover'
+                            }}
                         />
                         <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full pointer-events-none" style={{ transform: 'scaleX(-1)' }} />
 
