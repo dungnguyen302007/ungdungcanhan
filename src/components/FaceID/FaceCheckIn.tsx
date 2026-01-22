@@ -7,6 +7,7 @@ import { validateLocation, formatLocationForStorage } from '../../utils/location
 import { doc, getDoc, collection, addDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { toast } from 'react-hot-toast';
+import { RequestModal } from '../User/RequestModal';
 
 export const FaceCheckIn: React.FC = () => {
     const videoRef = useRef<HTMLVideoElement>(null);
@@ -26,6 +27,7 @@ export const FaceCheckIn: React.FC = () => {
     // GPS State
     const [locationStatus, setLocationStatus] = useState<'checking' | 'valid' | 'invalid' | null>(null);
     const [locationData, setLocationData] = useState<any>(null);
+    const [showRequestModal, setShowRequestModal] = useState(false);
 
     useEffect(() => {
         const start = async () => {
@@ -190,8 +192,10 @@ export const FaceCheckIn: React.FC = () => {
         try {
             if (actionType === 'check-in') {
                 // LOGIC CHECK-IN
-                const { calculateLateMinutes } = await import('../../utils/attendanceUtils');
-                const lateMinutes = calculateLateMinutes(now);
+                const { calculateLateMinutes, getAttendanceConfig } = await import('../../utils/attendanceUtils');
+                const config = await getAttendanceConfig();
+
+                const lateMinutes = calculateLateMinutes(now, config);
 
                 notifTitle = lateMinutes > 0 ? "Check-in Trễ ⚠️" : "Check-in Thành Công ✅";
                 notifMessage = lateMinutes > 0
@@ -224,14 +228,15 @@ export const FaceCheckIn: React.FC = () => {
 
             } else {
                 // LOGIC CHECK-OUT
-                const { calculateEarlyLeaveMinutes, calculateTotalWorkHours } = await import('../../utils/attendanceUtils');
+                const { calculateEarlyLeaveMinutes, calculateTotalWorkHours, getAttendanceConfig } = await import('../../utils/attendanceUtils');
+                const config = await getAttendanceConfig();
 
                 // Need checkInTime to calculate totals. If from state it might be old, but we can trust firestore or state if refreshed.
                 // Better use server time, but for calculation we need approximation
                 const checkInDate = todayRecord?.checkInTime?.toDate ? todayRecord.checkInTime.toDate() : now; // Fallback?
 
-                const earlyMinutes = calculateEarlyLeaveMinutes(now);
-                const totalHours = calculateTotalWorkHours(checkInDate, now);
+                const earlyMinutes = calculateEarlyLeaveMinutes(now, config);
+                const totalHours = calculateTotalWorkHours(checkInDate, now, config);
 
                 notifTitle = "Check-out Thành Công 🏠";
                 notifMessage = `Tổng giờ làm: ${totalHours}h. ${earlyMinutes > 0 ? `Về sớm ${earlyMinutes} phút.` : "Hẹn gặp lại mai!"}`;
@@ -376,6 +381,21 @@ export const FaceCheckIn: React.FC = () => {
                             </div>
                         )}
                     </div>
+
+                    {/* Request / Justification Button */}
+                    <button
+                        onClick={() => setShowRequestModal(true)}
+                        className="w-full py-3 text-slate-500 text-sm font-bold hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all flex items-center justify-center gap-2"
+                    >
+                        <span>Quên chấm công / Giải trình?</span>
+                    </button>
+                </div>
+            )}
+
+            {/* Request Modal */}
+            {showRequestModal && (
+                <div style={{ position: 'fixed', zIndex: 9999 }}> {/* Ensure portal-like behavior if needed, simpler to just render */}
+                    <RequestModal isOpen={showRequestModal} onClose={() => setShowRequestModal(false)} />
                 </div>
             )}
         </div>

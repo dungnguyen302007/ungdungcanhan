@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useAuthStore } from '../../store/useAuthStore';
-import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
+import { collection, query, where, orderBy, limit, getDocs, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
-import { Clock, CheckCircle2, LogOut } from 'lucide-react';
+import { Clock, CheckCircle2, LogOut, FileText, Calendar } from 'lucide-react';
 
 interface DailyAttendance {
     id: string;
@@ -17,9 +17,19 @@ interface DailyAttendance {
     };
 }
 
+interface RequestHistoryItem {
+    id: string;
+    date: string;
+    type: string;
+    reason: string;
+    status: 'pending' | 'approved' | 'rejected';
+    createdAt: any;
+}
+
 export const AttendanceHistory: React.FC = () => {
     const { user } = useAuthStore();
     const [records, setRecords] = useState<DailyAttendance[]>([]);
+    const [requests, setRequests] = useState<RequestHistoryItem[]>([]); // New state for requests
     const [stats, setStats] = useState({
         totalDays: 0,
         lateDays: 0,
@@ -82,6 +92,7 @@ export const AttendanceHistory: React.FC = () => {
                 })) as DailyAttendance[];
 
                 setRecords(fetchedRecords);
+
             } catch (error) {
                 console.error("Error fetching history:", error);
             } finally {
@@ -90,7 +101,48 @@ export const AttendanceHistory: React.FC = () => {
         };
 
         fetchHistory();
+
+        // 3. Real-time Requests Listener
+        if (!user) return;
+
+        const qRequests = query(
+            collection(db, 'attendance_requests'),
+            where('userId', '==', user.uid)
+        );
+
+        const unsubscribe = onSnapshot(qRequests, (snapshot) => {
+            const fetchedRequests = snapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data()
+            })) as RequestHistoryItem[];
+
+            fetchedRequests.sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+            setRequests(fetchedRequests.slice(0, 5));
+        });
+
+        return () => unsubscribe();
+
     }, [user]);
+
+    const getRequestStatusBadge = (status: string) => {
+        switch (status) {
+            case 'approved': return <span className="text-[10px] font-bold bg-green-100 text-green-600 px-2 py-1 rounded border border-green-200">Đã duyệt</span>;
+            case 'rejected': return <span className="text-[10px] font-bold bg-red-100 text-red-600 px-2 py-1 rounded border border-red-200">Từ chối</span>;
+            default: return <span className="text-[10px] font-bold bg-amber-100 text-amber-600 px-2 py-1 rounded border border-amber-200">Chờ duyệt</span>;
+        }
+    };
+
+    const getRequestTypeLabel = (type: string) => {
+        switch (type) {
+            case 'late_in': return 'Đi muộn';
+            case 'early_out': return 'Về sớm';
+            case 'missing_in': return 'Quên Check-in';
+            case 'missing_out': return 'Quên Check-out';
+            case 'remote_work': return 'Công tác';
+            case 'leave': return 'Nghỉ phép';
+            default: return type;
+        }
+    };
 
     if (loading) return <div className="text-center py-4 text-slate-400">Đang tải lịch sử...</div>;
 
@@ -122,7 +174,7 @@ export const AttendanceHistory: React.FC = () => {
                 </div>
             </div>
 
-            {/* List */}
+            {/* List Attendance */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
                 <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
                     <Clock className="w-5 h-5 text-blue-500" />
@@ -188,6 +240,42 @@ export const AttendanceHistory: React.FC = () => {
                                 </div>
                             );
                         })}
+                    </div>
+                )}
+            </div>
+
+            {/* List Requests - NEW SECTION */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+                <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
+                    <FileText className="w-5 h-5 text-purple-500" />
+                    Lịch sử giải trình / Yêu cầu
+                </h3>
+
+                {requests.length === 0 ? (
+                    <div className="text-center py-8">
+                        <p className="text-slate-400 font-medium text-sm">Chưa có yêu cầu nào</p>
+                    </div>
+                ) : (
+                    <div className="space-y-3">
+                        {requests.map(req => (
+                            <div key={req.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center text-purple-600">
+                                        <FileText size={20} />
+                                    </div>
+                                    <div>
+                                        <p className="font-bold text-slate-800 text-sm">{getRequestTypeLabel(req.type)}</p>
+                                        <p className="text-xs text-slate-500 flex items-center gap-1">
+                                            <Calendar className="w-3 h-3" /> {req.date}
+                                        </p>
+                                    </div>
+                                </div>
+                                <div className="text-right">
+                                    {getRequestStatusBadge(req.status)}
+                                    <p className="text-[10px] text-slate-400 mt-1 max-w-[100px] truncate italic">"{req.reason}"</p>
+                                </div>
+                            </div>
+                        ))}
                     </div>
                 )}
             </div>

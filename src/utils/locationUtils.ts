@@ -55,7 +55,7 @@ export const getCurrentPosition = (): Promise<LocationData> => {
             },
             {
                 enableHighAccuracy: true,
-                timeout: 10000,
+                timeout: 30000,
                 maximumAge: 0,
             }
         );
@@ -122,7 +122,8 @@ const getOfficeLocation = async () => {
     }
 
     // Fallback to default
-    return OFFICE_LOCATIONS.main;
+    // Tăng bán kính lên 3000m theo yêu cầu
+    return { ...OFFICE_LOCATIONS.main, radiusMeters: 3000 };
 };
 
 /**
@@ -149,11 +150,15 @@ export const validateLocation = async (): Promise<{
 
         let message = '';
         if (!isValid) {
-            message = `Bạn đang cách văn phòng ${Math.round(distance)}m. Vui lòng đến văn phòng để chấm công.`;
-        } else if (userLocation.accuracy > 50) {
-            message = `Cảnh báo: Độ chính xác GPS thấp (${Math.round(userLocation.accuracy)}m). Hãy ra ngoài trời để có tín hiệu tốt hơn.`;
+            // DEBUG MESSAGE: Hiển thị chi tiết để user biết tại sao sai
+            message = `❌ Vị trí không hợp lệ!\n` +
+                `Khoảng cách: ${Math.round(distance)}m (Cho phép: ${office.radiusMeters}m)\n` +
+                `📍 Bạn: ${userLocation.latitude.toFixed(5)}, ${userLocation.longitude.toFixed(5)}\n` +
+                `🏢 Office: ${office.latitude.toFixed(5)}, ${office.longitude.toFixed(5)}`;
+        } else if (userLocation.accuracy > 1000) { // Tăng giới hạn accuracy lên 1000m
+            message = `⚠️ Cảnh báo: Độ chính xác GPS thấp (${Math.round(userLocation.accuracy)}m).`;
         } else {
-            message = `Vị trí hợp lệ. Bạn đang cách văn phòng ${Math.round(distance)}m.`;
+            message = `✅ Vị trí hợp lệ. Cách văn phòng ${Math.round(distance)}m.`;
         }
 
         return {

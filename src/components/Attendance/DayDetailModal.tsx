@@ -1,6 +1,9 @@
-import React from 'react';
-import { X, Clock, CheckCircle2, LogOut, AlertCircle, MapPin } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { X, Clock, CheckCircle2, LogOut, AlertCircle, MapPin, FileText } from 'lucide-react';
 import { getGoogleMapsLink } from '../../utils/locationUtils';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../../lib/firebase';
+import { useAuthStore } from '../../store/useAuthStore';
 
 interface DayDetailModalProps {
     date: Date;
@@ -25,17 +28,52 @@ interface DayDetailModalProps {
             distanceFromOffice: number;
             isWithinRadius: boolean;
         };
+        note?: string; // Add note support
     };
     onClose: () => void;
 }
 
 export const DayDetailModal: React.FC<DayDetailModalProps> = ({ date, attendance, onClose }) => {
+    const { user } = useAuthStore();
+    const userId = user?.uid;
     const checkIn = attendance?.checkInTime?.toDate ? attendance.checkInTime.toDate() : null;
     const checkOut = attendance?.checkOutTime?.toDate ? attendance.checkOutTime.toDate() : null;
+    const [request, setRequest] = useState<any>(null);
+
+    useEffect(() => {
+        const fetchRequest = async () => {
+            if (!userId) return;
+            const dateStr = date.toISOString().split('T')[0];
+            const q = query(
+                collection(db, 'attendance_requests'),
+                where('userId', '==', userId),
+                where('date', '==', dateStr)
+            );
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+                setRequest(snap.docs[0].data());
+            } else {
+                setRequest(null);
+            }
+        };
+        fetchRequest();
+    }, [date, userId]);
+
+    const getRequestStatusColor = (status: string) => {
+        if (status === 'approved') return 'bg-green-100 text-green-700 border-green-200';
+        if (status === 'rejected') return 'bg-red-100 text-red-700 border-red-200';
+        return 'bg-amber-100 text-amber-700 border-amber-200';
+    };
+
+    const getRequestStatusText = (status: string) => {
+        if (status === 'approved') return 'Đã được duyệt';
+        if (status === 'rejected') return 'Bị từ chối';
+        return 'Đang chờ duyệt';
+    };
 
     return (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 backdrop-blur-sm animate-fade-in">
-            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-in">
+            <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full p-6 animate-scale-in max-h-[90vh] overflow-y-auto">
                 {/* Header */}
                 <div className="flex justify-between items-start mb-6">
                     <div>
@@ -57,6 +95,29 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({ date, attendance
                 {/* Content */}
                 {attendance ? (
                     <div className="space-y-4">
+
+                        {/* Status / Request Info */}
+                        {request && (
+                            <div className={`p-4 rounded-xl border flex items-center gap-3 ${getRequestStatusColor(request.status)}`}>
+                                <FileText className="w-5 h-5" />
+                                <div>
+                                    <p className="text-xs font-bold uppercase">Yêu cầu giải trình</p>
+                                    <p className="font-bold text-sm">
+                                        {getRequestStatusText(request.status)}
+                                    </p>
+                                    <p className="text-xs mt-1 opacity-80 line-clamp-1">Lý do: {request.reason}</p>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Note in Attendance */}
+                        {attendance.note && (
+                            <div className="bg-blue-50 p-3 rounded-xl border border-blue-100 text-blue-800 text-sm flex items-start gap-2">
+                                <FileText className="w-4 h-4 shrink-0 mt-0.5" />
+                                <span>{attendance.note}</span>
+                            </div>
+                        )}
+
                         {/* Check-in */}
                         <div className="bg-green-50 p-4 rounded-xl border border-green-100">
                             <div className="flex items-center gap-3 mb-2">
@@ -155,12 +216,27 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({ date, attendance
                         )}
                     </div>
                 ) : (
-                    <div className="text-center py-8">
-                        <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                            <AlertCircle className="w-8 h-8 text-red-400" />
+                    <div className="space-y-4">
+                        {request ? (
+                            <div className={`p-4 rounded-xl border flex items-center gap-3 ${getRequestStatusColor(request.status)}`}>
+                                <FileText className="w-5 h-5" />
+                                <div>
+                                    <p className="text-xs font-bold uppercase">Yêu cầu giải trình</p>
+                                    <p className="font-bold text-sm">
+                                        {getRequestStatusText(request.status)}
+                                    </p>
+                                    <p className="text-xs mt-1 opacity-80 line-clamp-1">Lý do: {request.reason}</p>
+                                </div>
+                            </div>
+                        ) : null}
+
+                        <div className="text-center py-8">
+                            <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                                <AlertCircle className="w-8 h-8 text-red-400" />
+                            </div>
+                            <p className="text-slate-900 font-bold text-lg">Không có dữ liệu chấm công</p>
+                            <p className="text-slate-500 text-sm mt-2">Bạn chưa chấm công vào ngày này</p>
                         </div>
-                        <p className="text-slate-900 font-bold text-lg">Không có dữ liệu chấm công</p>
-                        <p className="text-slate-500 text-sm mt-2">Bạn chưa chấm công vào ngày này</p>
                     </div>
                 )}
 
