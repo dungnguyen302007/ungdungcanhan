@@ -299,15 +299,15 @@ export const FaceCheckIn: React.FC = () => {
                 </div>
             ) : (
                 <div className="space-y-4 md:space-y-6">
-                    <div className="relative overflow-hidden rounded-2xl bg-black">
+                    <div className="relative rounded-2xl overflow-hidden">
                         <video
                             ref={videoRef}
                             autoPlay
                             playsInline
                             muted
                             onPlay={handleVideoPlay}
-                            className={`w-full aspect-video object-cover mirror ${isMatched ? 'border-4 border-green-500' : ''}`}
-                            style={{ transform: 'scaleX(-1)' }}
+                            className={`w-full rounded-2xl ${isMatched ? 'border-4 border-green-500' : ''}`}
+                            style={{ transform: 'scaleX(-1)', maxHeight: '70vh' }}
                         />
                         <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full pointer-events-none" style={{ transform: 'scaleX(-1)' }} />
 
