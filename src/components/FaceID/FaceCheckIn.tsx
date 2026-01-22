@@ -79,8 +79,8 @@ export const FaceCheckIn: React.FC = () => {
                 stream = await navigator.mediaDevices.getUserMedia({
                     video: {
                         facingMode: 'user',
-                        width: { ideal: 640 },
-                        height: { ideal: 480 }
+                        width: { ideal: 480 },
+                        height: { ideal: 640 }
                     }
                 });
             } catch (err) {
@@ -88,8 +88,8 @@ export const FaceCheckIn: React.FC = () => {
                 console.warn('facingMode not supported, trying basic constraints');
                 stream = await navigator.mediaDevices.getUserMedia({
                     video: {
-                        width: { ideal: 640 },
-                        height: { ideal: 480 }
+                        width: { ideal: 480 },
+                        height: { ideal: 640 }
                     }
                 });
             }
@@ -308,9 +308,7 @@ export const FaceCheckIn: React.FC = () => {
                             onPlay={handleVideoPlay}
                             className={`w-full rounded-2xl ${isMatched ? 'border-4 border-green-500' : ''}`}
                             style={{
-                                transform: 'scaleX(-1)',
-                                aspectRatio: '3/4',
-                                objectFit: 'cover'
+                                transform: 'scaleX(-1)'
                             }}
                         />
                         <canvas ref={canvasRef} className="absolute top-0 left-0 w-full h-full pointer-events-none" style={{ transform: 'scaleX(-1)' }} />
