@@ -72,15 +72,21 @@ export const FaceCheckIn: React.FC = () => {
     }, [userId]);
 
     const startVideo = () => {
-        navigator.mediaDevices.getUserMedia({ video: {} })
+        navigator.mediaDevices.getUserMedia({
+            video: {
+                facingMode: 'user',  // Front camera for face recognition
+                width: { ideal: 640 },
+                height: { ideal: 480 }
+            }
+        })
             .then(stream => {
                 if (videoRef.current) {
                     videoRef.current.srcObject = stream;
                 }
             })
             .catch(err => {
-                console.error("Camera error:", err);
-                toast.error("Không thể truy cập camera");
+                console.error('Error accessing camera:', err);
+                setMessage(`Lỗi camera: ${err.message}. Vui lòng kiểm tra quyền truy cập.`);
             });
     };
 
