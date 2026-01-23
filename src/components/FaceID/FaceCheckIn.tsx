@@ -12,6 +12,8 @@ import { RequestModal } from '../User/RequestModal';
 export const FaceCheckIn: React.FC = () => {
     const videoRef = useRef<HTMLVideoElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
+    const intervalRef = useRef<NodeJS.Timeout | null>(null);
+    const processingRef = useRef(false);
     const { userId } = useStore();
 
     const [initializing, setInitializing] = useState(true);
@@ -108,6 +110,10 @@ export const FaceCheckIn: React.FC = () => {
     };
 
     const stopVideo = () => {
+        if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+            intervalRef.current = null;
+        }
         if (videoRef.current && videoRef.current.srcObject) {
             const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
             tracks.forEach(track => track.stop());
@@ -115,37 +121,48 @@ export const FaceCheckIn: React.FC = () => {
     };
 
     const handleVideoPlay = () => {
-        // ... (Keep existing detection loop logic, just change handleCheckInSuccess call)
-        const interval = setInterval(async () => {
+        // Clear any existing interval to prevent duplicates
+        if (intervalRef.current) {
+            clearInterval(intervalRef.current);
+        }
+
+        intervalRef.current = setInterval(async () => {
+            if (processingRef.current) return;
+
             if (videoRef.current && canvasRef.current && userDescriptor && !checking && !isMatched) {
                 // If today is fully done, stop checking
                 if (todayRecord?.checkOutTime) return;
 
                 setChecking(true);
 
-                const detection = await faceapi.detectSingleFace(videoRef.current)
-                    .withFaceLandmarks()
-                    .withFaceDescriptor();
+                try {
+                    const detection = await faceapi.detectSingleFace(videoRef.current)
+                        .withFaceLandmarks()
+                        .withFaceDescriptor();
 
-                if (detection) {
-                    const dims = faceapi.matchDimensions(canvasRef.current, videoRef.current, true);
-                    const resizedResult = faceapi.resizeResults(detection, dims);
-                    faceapi.draw.drawDetections(canvasRef.current, resizedResult);
+                    if (detection) {
+                        const dims = faceapi.matchDimensions(canvasRef.current, videoRef.current, true);
+                        const resizedResult = faceapi.resizeResults(detection, dims);
+                        faceapi.draw.drawDetections(canvasRef.current, resizedResult);
 
-                    const distance = faceapi.euclideanDistance(detection.descriptor, userDescriptor);
-                    if (distance < 0.5) {
-                        setIsMatched(true);
-                        handleProccessAttendance(); // Call new handler
-                        clearInterval(interval);
+                        const distance = faceapi.euclideanDistance(detection.descriptor, userDescriptor);
+                        if (distance < 0.5) {
+                            // Match found!
+                            processingRef.current = true; // Block further checks immediately
+                            setIsMatched(true);
+                            if (intervalRef.current) clearInterval(intervalRef.current);
+                            await handleProccessAttendance();
+                        }
+                    } else {
+                        const context = canvasRef.current.getContext('2d');
+                        context?.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
                     }
-                } else {
-                    const context = canvasRef.current.getContext('2d');
-                    context?.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+                } catch (err) {
+                    console.error("Detection error:", err);
                 }
                 setChecking(false);
             }
         }, 1000);
-        return () => clearInterval(interval);
     };
 
     const handleProccessAttendance = async () => {
