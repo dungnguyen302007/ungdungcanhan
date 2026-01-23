@@ -36,6 +36,7 @@ jobs:
         env:
           # Add environment variables if needed
           NODE_ENV: production
+          VITE_BASE_PATH: '/ungdungcanhan/'
 
       - name: Setup Pages
         uses: actions/configure-pages@v4
