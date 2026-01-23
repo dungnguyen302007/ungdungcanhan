@@ -4,7 +4,7 @@ import { Camera, CheckCircle, CheckCircle2, AlertCircle, MapPin } from 'lucide-r
 import { loadModels } from '../../utils/faceService';
 import { useStore } from '../../store/useStore';
 import { validateLocation, formatLocationForStorage } from '../../utils/locationUtils';
-import { doc, getDoc, collection, addDoc, serverTimestamp, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, serverTimestamp, updateDoc } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { toast } from 'react-hot-toast';
 import { RequestModal } from '../User/RequestModal';
@@ -263,8 +263,10 @@ export const FaceCheckIn: React.FC = () => {
             toast.success(notifTitle + ": " + notifMessage, { duration: 5000 });
             setMessage(notifMessage);
 
-            // Save Notification to collection
-            await addDoc(collection(db, 'notifications'), {
+            // Save Notification to Firestore with unique ID
+            const notificationId = `checkin-${userId}-${now.getTime()}`;
+            await setDoc(doc(db, 'notifications', notificationId), {
+                id: notificationId,
                 userId,
                 type: 'system',
                 title: notifTitle,

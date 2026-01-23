@@ -3,35 +3,16 @@ import { useAuthStore } from '../../store/useAuthStore';
 import { collection, query, where, orderBy, limit, getDocs, onSnapshot } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { Clock, CheckCircle2, LogOut, FileText, Calendar } from 'lucide-react';
-
-interface DailyAttendance {
-    id: string;
-    date: string;
-    checkInTime: any;
-    checkOutTime: any;
-    status: 'present' | 'late' | 'early' | 'late-early' | 'absent';
-    details: {
-        lateMinutes: number;
-        earlyLeaveMinutes: number;
-        totalWorkHours: number;
-    };
-}
-
-interface RequestHistoryItem {
-    id: string;
-    date: string;
-    type: string;
-    reason: string;
-    status: 'pending' | 'approved' | 'rejected';
-    createdAt: any;
-}
+import type { DailyAttendance, AttendanceRequest } from '../../types';
+import { calculateWorkDay, getWorkDayStatus } from '../../utils/attendanceUtils';
 
 export const AttendanceHistory: React.FC = () => {
     const { user } = useAuthStore();
     const [records, setRecords] = useState<DailyAttendance[]>([]);
-    const [requests, setRequests] = useState<RequestHistoryItem[]>([]); // New state for requests
+    const [requests, setRequests] = useState<AttendanceRequest[]>([]);
     const [stats, setStats] = useState({
         totalDays: 0,
+        totalWorkDays: 0, // Changed from totalDays to tracking Work Days explicitly
         lateDays: 0,
         earlyDays: 0,
         onTimeDays: 0,
@@ -48,6 +29,7 @@ export const AttendanceHistory: React.FC = () => {
                 const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
                 const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
 
+                // Fetch Attendance and Requests in parallel
                 const qStats = query(
                     collection(db, 'attendance_days'),
                     where('userId', '==', user.uid),
@@ -55,8 +37,29 @@ export const AttendanceHistory: React.FC = () => {
                     where('date', '<=', endOfMonth)
                 );
 
-                const statsSnapshot = await getDocs(qStats);
+                const qRequestsMonth = query(
+                    collection(db, 'attendance_requests'),
+                    where('userId', '==', user.uid),
+                    where('date', '>=', startOfMonth),
+                    where('date', '<=', endOfMonth)
+                );
+
+                const [statsSnapshot, requestsSnapshot] = await Promise.all([
+                    getDocs(qStats),
+                    getDocs(qRequestsMonth)
+                ]);
+
+                // Map requests by date for easy lookup
+                const requestsMap = new Map<string, AttendanceRequest>();
+                requestsSnapshot.forEach(doc => {
+                    const req = { id: doc.id, ...doc.data() } as AttendanceRequest;
+                    if (req.status === 'approved') {
+                        requestsMap.set(req.date, req);
+                    }
+                });
+
                 let totalDays = 0;
+                let totalWorkDays = 0;
                 let lateDays = 0;
                 let earlyDays = 0;
                 let onTimeDays = 0;
@@ -64,8 +67,21 @@ export const AttendanceHistory: React.FC = () => {
 
                 statsSnapshot.forEach(doc => {
                     const data = doc.data() as DailyAttendance;
-                    totalDays++;
+                    // Helper: Find all approved requests for this date
+                    const dailyRequests = requestsSnapshot.docs
+                        .map(d => ({ id: d.id, ...d.data() } as AttendanceRequest))
+                        .filter(r => r.date === data.date && r.status === 'approved');
+
+                    totalDays++; // Physical presence 
+                    totalWorkDays += calculateWorkDay(data, dailyRequests);
                     totalHours += data.details?.totalWorkHours || 0;
+
+                    // Only count as Late/Early if NOT excused by an approved request? 
+                    // Or count physical timestamps? 
+                    // User said: "Nếu có đơn giải trình cũng phải 1 ngày công".
+                    // But for stats count (Late/Early), usually we still want to know how many times they were physically late.
+                    // But effectively it is "excused".
+                    // Let's stick to physical timestamps for "Late/Early" counts for now, but WorkDays is what matters for salary.
 
                     const isLate = data.details?.lateMinutes > 0;
                     const isEarly = data.details?.earlyLeaveMinutes > 0;
@@ -75,7 +91,14 @@ export const AttendanceHistory: React.FC = () => {
                     if (!isLate && !isEarly) onTimeDays++;
                 });
 
-                setStats({ totalDays, lateDays, earlyDays, onTimeDays, totalHours: parseFloat(totalHours.toFixed(1)) });
+                setStats({
+                    totalDays,
+                    totalWorkDays, // Use float for work days
+                    lateDays,
+                    earlyDays,
+                    onTimeDays,
+                    totalHours: parseFloat(totalHours.toFixed(1))
+                });
 
                 // 2. Fetch Recent Records for list
                 const qRecent = query(
@@ -102,7 +125,7 @@ export const AttendanceHistory: React.FC = () => {
 
         fetchHistory();
 
-        // 3. Real-time Requests Listener
+        // 3. Real-time Requests Listener (All requests for list)
         if (!user) return;
 
         const qRequests = query(
@@ -114,10 +137,10 @@ export const AttendanceHistory: React.FC = () => {
             const fetchedRequests = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
-            })) as RequestHistoryItem[];
+            })) as AttendanceRequest[];
 
-            fetchedRequests.sort((a: any, b: any) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
-            setRequests(fetchedRequests.slice(0, 5));
+            fetchedRequests.sort((a, b) => (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0));
+            setRequests(fetchedRequests); // Store all, filter/slice in render if needed or keeping separate state for limited list
         });
 
         return () => unsubscribe();
@@ -152,7 +175,10 @@ export const AttendanceHistory: React.FC = () => {
             <div className="grid grid-cols-2 gap-3">
                 <div className="bg-blue-500 rounded-2xl p-4 text-white shadow-lg shadow-blue-200">
                     <p className="text-xs font-medium opacity-80 uppercase tracking-wider">Ngày Công</p>
-                    <p className="text-3xl font-black mt-1">{stats.totalDays}</p>
+                    <div className="flex items-baseline gap-1 mt-1">
+                        <p className="text-3xl font-black">{stats.totalWorkDays}</p>
+                        <p className="text-sm opacity-80 font-bold">/ {stats.totalDays} Check-in</p>
+                    </div>
                     <p className="text-[10px] mt-2 opacity-80">Tháng {new Date().getMonth() + 1}</p>
                 </div>
                 <div className="bg-white rounded-2xl p-4 border border-slate-100 shadow-sm">
@@ -193,6 +219,9 @@ export const AttendanceHistory: React.FC = () => {
                             const isLate = record.details?.lateMinutes > 0;
                             const isEarly = record.details?.earlyLeaveMinutes > 0;
 
+                            const relevantRequests = requests.filter(r => r.date === record.date);
+                            const workDayStatus = getWorkDayStatus(record, relevantRequests);
+
                             return (
                                 <div key={record.id} className="p-4 bg-slate-50 rounded-xl border border-slate-100 hover:shadow-md transition-all">
                                     <div className="flex justify-between items-start mb-3">
@@ -200,10 +229,10 @@ export const AttendanceHistory: React.FC = () => {
                                             <p className="text-sm font-bold text-slate-900">
                                                 {checkIn ? checkIn.toLocaleDateString('vi-VN', { weekday: 'long', day: 'numeric', month: 'numeric' }) : record.date}
                                             </p>
-                                            <div className="flex gap-2 mt-1">
-                                                {isLate && <span className="text-[10px] font-bold bg-amber-100 text-amber-600 px-2 py-0.5 rounded-full">Đi trễ {record.details.lateMinutes}p</span>}
-                                                {isEarly && <span className="text-[10px] font-bold bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full">Về sớm {record.details.earlyLeaveMinutes}p</span>}
-                                                {!isLate && !isEarly && <span className="text-[10px] font-bold bg-green-100 text-green-600 px-2 py-0.5 rounded-full">Đúng giờ</span>}
+                                            <div className="flex gap-2 mt-1 flex-wrap">
+                                                <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${workDayStatus.color} ${workDayStatus.textColor} ${workDayStatus.borderColor}`}>
+                                                    {workDayStatus.label}
+                                                </span>
                                             </div>
                                         </div>
                                         <div className="text-right">
@@ -244,7 +273,7 @@ export const AttendanceHistory: React.FC = () => {
                 )}
             </div>
 
-            {/* List Requests - NEW SECTION */}
+            {/* List Requests */}
             <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
                 <h3 className="text-lg font-bold text-slate-900 mb-4 flex items-center gap-2">
                     <FileText className="w-5 h-5 text-purple-500" />
@@ -257,7 +286,7 @@ export const AttendanceHistory: React.FC = () => {
                     </div>
                 ) : (
                     <div className="space-y-3">
-                        {requests.map(req => (
+                        {requests.slice(0, 5).map(req => (
                             <div key={req.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-100">
                                 <div className="flex items-center gap-3">
                                     <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center text-purple-600">
@@ -282,3 +311,4 @@ export const AttendanceHistory: React.FC = () => {
         </div>
     );
 };
+

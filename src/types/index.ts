@@ -71,8 +71,44 @@ export const DEFAULT_CATEGORIES: Category[] = [
     { id: 'c8', name: 'Giải trí', type: 'expense', color: '#7efff5', icon: 'Gamepad2', isDefault: true },
     { id: 'c9', name: 'Khác', type: 'expense', color: '#d1ccc0', icon: 'MoreHorizontal', isDefault: true },
     // Income
-    { id: 'i1', name: 'Lương', type: 'income', color: '#2ecc71', icon: 'Wallet', isDefault: true },
-    { id: 'i2', name: 'Thưởng', type: 'income', color: '#27ae60', icon: 'Gift', isDefault: true },
     { id: 'i3', name: 'Kinh doanh', type: 'income', color: '#16a085', icon: 'TrendingUp', isDefault: true },
     { id: 'i4', name: 'Khác', type: 'income', color: '#95a5a6', icon: 'MoreHorizontal', isDefault: true },
 ];
+
+// Attendance Types
+export interface WorkDayDetails {
+    lateMinutes: number;
+    earlyLeaveMinutes: number;
+    totalWorkHours: number;
+}
+
+export interface LocationInfo {
+    latitude: number;
+    longitude: number;
+    distanceFromOffice: number;
+    isWithinRadius: boolean;
+    address?: string;
+}
+
+export interface DailyAttendance {
+    id: string;
+    userId?: string;
+    date: string;
+    checkInTime: any; // Firestore Timestamp
+    checkOutTime: any; // Firestore Timestamp
+    status: 'present' | 'late' | 'early' | 'late-early' | 'absent';
+    details: WorkDayDetails;
+    checkInLocation?: LocationInfo;
+    checkOutLocation?: LocationInfo;
+    note?: string;
+}
+
+export interface AttendanceRequest {
+    id: string;
+    userId: string;
+    date: string;
+    type: 'late_in' | 'early_out' | 'missing_in' | 'missing_out' | 'remote_work' | 'leave';
+    reason: string;
+    status: 'pending' | 'approved' | 'rejected';
+    createdAt: any;
+}

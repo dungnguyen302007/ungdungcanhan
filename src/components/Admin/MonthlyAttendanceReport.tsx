@@ -2,6 +2,9 @@ import React, { useState, useEffect } from 'react';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { calculateWorkDay } from '../../utils/attendanceUtils';
+import type { AttendanceRequest } from '../../types';
+import { DayDetailModal } from '../Attendance/DayDetailModal';
 
 interface AttendanceSimple {
     date: string; // YYYY-MM-DD
@@ -22,6 +25,7 @@ interface UserRow {
         present: number;
         late: number;
         absent: number;
+        totalWorkDays: number; // ADDED: Actual work days based on calculateWorkDay
     };
 }
 
@@ -29,6 +33,7 @@ export const MonthlyAttendanceReport: React.FC = () => {
     const [currentDate, setCurrentDate] = useState(new Date());
     const [loading, setLoading] = useState(true);
     const [reportData, setReportData] = useState<UserRow[]>([]);
+    const [selectedDay, setSelectedDay] = useState<{ date: Date; userId: string } | null>(null);
 
     useEffect(() => {
         fetchMonthlyData();
@@ -69,7 +74,6 @@ export const MonthlyAttendanceReport: React.FC = () => {
             const users = usersSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
             // 2. Fetch Attendance
-            // Firestore string range query on 'date' field
             const q = query(
                 collection(db, 'attendance_days'),
                 where('date', '>=', startStr),
@@ -77,7 +81,29 @@ export const MonthlyAttendanceReport: React.FC = () => {
             );
             const attendanceSnap = await getDocs(q);
 
-            // 3. Process Data
+            // 3. Fetch Attendance Requests (CRITICAL FOR WORK DAY CALC)
+            const qRequests = query(
+                collection(db, 'attendance_requests'),
+                where('date', '>=', startStr),
+                where('date', '<=', endStr)
+            );
+            const requestsSnap = await getDocs(qRequests);
+
+            // Build requests map by userId->date->requests[]
+            const requestsMap = new Map<string, Map<string, AttendanceRequest[]>>();
+            requestsSnap.docs.forEach(doc => {
+                const req = { id: doc.id, ...doc.data() } as AttendanceRequest;
+                if (!requestsMap.has(req.userId)) {
+                    requestsMap.set(req.userId, new Map());
+                }
+                const userReqMap = requestsMap.get(req.userId)!;
+                if (!userReqMap.has(req.date)) {
+                    userReqMap.set(req.date, []);
+                }
+                userReqMap.get(req.date)!.push(req);
+            });
+
+            // 4. Process Data
             const attendanceMap = new Map<string, { [date: string]: AttendanceSimple }>();
 
             attendanceSnap.docs.forEach(doc => {
@@ -106,19 +132,35 @@ export const MonthlyAttendanceReport: React.FC = () => {
                 };
             });
 
-            // 4. Build Rows
+            // 5. Build Rows with Work Day Calculation
             const rows: UserRow[] = users.map((user: any) => {
                 const userAttendance = attendanceMap.get(user.id) || {};
+                const userRequests = requestsMap.get(user.id);
 
                 // Calc stats
                 let present = 0;
                 let late = 0;
-                // absent = days in month passed - present (simplified) or logic based on work days
-                // For simplicity, count explicit records
+                let totalWorkDays = 0;
 
-                Object.values(userAttendance).forEach(r => {
+                Object.entries(userAttendance).forEach(([date, r]) => {
                     if (r.status === 'late') late++;
                     if (r.status === 'present' || r.status === 'late') present++;
+
+                    // CRITICAL: Calculate work days using request data
+                    const dailyRequests = userRequests?.get(date) || [];
+                    const attendanceForCalc: any = {
+                        id: `${user.id}_${date}`,
+                        date,
+                        checkInTime: r.checkInTime,
+                        checkOutTime: r.checkOutTime,
+                        status: r.status as any, // Type workaround
+                        details: {
+                            lateMinutes: r.lateMinutes,
+                            earlyLeaveMinutes: r.earlyLeaveMinutes,
+                            totalWorkHours: r.totalWorkHours
+                        }
+                    };
+                    totalWorkDays += calculateWorkDay(attendanceForCalc, dailyRequests);
                 });
 
                 return {
@@ -129,7 +171,8 @@ export const MonthlyAttendanceReport: React.FC = () => {
                     stats: {
                         present,
                         late,
-                        absent: 0 // logic for absent is tricky without shift schedule, leave 0 for now
+                        absent: 0,
+                        totalWorkDays // FIXED: Use calculated work days, not just presence count
                     }
                 };
             });
@@ -243,7 +286,15 @@ export const MonthlyAttendanceReport: React.FC = () => {
                                                 <td
                                                     key={d.day}
                                                     className={`border-r border-b border-slate-100 p-1 text-center relative group cursor-pointer ${getCellColor(cellData, d.isWeekend)}`}
-                                                    title={cellData ? `Vào: ${cellData.checkInTime?.toLocaleTimeString('vi-VN') || '--'} - Ra: ${cellData.checkOutTime?.toLocaleTimeString('vi-VN') || '--'}` : ''}
+                                                    title={cellData ? `Vào: ${cellData.checkInTime?.toLocaleTimeString('vi-VN') || '--'} - Ra: ${cellData.checkOutTime?.toLocaleTimeString('vi-VN') || '--'}` : 'Click để xem chi tiết'}
+                                                    onClick={() => {
+                                                        if (!d.isWeekend) {
+                                                            setSelectedDay({
+                                                                date: new Date(d.dateStr),
+                                                                userId: row.userId
+                                                            });
+                                                        }
+                                                    }}
                                                 >
                                                     <div className="flex items-center justify-center h-8 text-[10px] font-bold">
                                                         {getCellContent(cellData)}
@@ -252,7 +303,7 @@ export const MonthlyAttendanceReport: React.FC = () => {
                                             );
                                         })}
                                         <td className="border-b border-slate-100 p-2 text-center font-bold text-blue-600 text-sm">
-                                            {row.stats.present}
+                                            {row.stats.totalWorkDays}
                                         </td>
                                     </tr>
                                 ))
@@ -261,6 +312,35 @@ export const MonthlyAttendanceReport: React.FC = () => {
                     </table>
                 </div>
             </div>
+
+            {/* Day Detail Modal */}
+            {selectedDay && (() => {
+                const user = reportData.find(r => r.userId === selectedDay.userId);
+                const dateKey = selectedDay.date.toISOString().split('T')[0];
+                const attendanceData = user?.attendance[dateKey];
+
+                // Convert to DailyAttendance format
+                const attendance = attendanceData ? {
+                    id: `${selectedDay.userId}_${dateKey}`,
+                    date: dateKey,
+                    checkInTime: attendanceData.checkInTime,
+                    checkOutTime: attendanceData.checkOutTime,
+                    status: attendanceData.status as any,
+                    details: {
+                        lateMinutes: attendanceData.lateMinutes,
+                        earlyLeaveMinutes: attendanceData.earlyLeaveMinutes,
+                        totalWorkHours: attendanceData.totalWorkHours
+                    }
+                } : undefined;
+
+                return (
+                    <DayDetailModal
+                        date={selectedDay.date}
+                        attendance={attendance}
+                        onClose={() => setSelectedDay(null)}
+                    />
+                );
+            })()}
         </div>
     );
 };

@@ -6,11 +6,14 @@ import {
     Heart,
     Settings,
     Play,
-    Shield, // Import Shield icon
-    MessageCircle, // Import MessagesCircle for chat
-    Scan // Import Scan icon for attendance
+    Shield,
+    MessageCircle,
+    Scan,
+    LogOut // Import LogOut icon
 } from 'lucide-react';
-import { useAuthStore } from '../../store/useAuthStore'; // Import auth store
+import { useAuthStore } from '../../store/useAuthStore';
+import { auth } from '../../lib/firebase';
+import { signOut } from 'firebase/auth';
 
 interface SidebarProps {
     activeTab: string;
@@ -19,6 +22,14 @@ interface SidebarProps {
 
 export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
     const { user } = useAuthStore();
+
+    const handleLogout = async () => {
+        try {
+            await signOut(auth);
+        } catch (error) {
+            console.error('Error signing out:', error);
+        }
+    };
 
     // Build menu items based on user role
     const menuItems = [];
@@ -31,7 +42,6 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
             { id: 'tasks', label: 'Công việc', icon: CheckSquare },
             { id: 'chat', label: 'Chat', icon: MessageCircle },
             { id: 'health', label: 'Sức khỏe', icon: Heart },
-            { id: 'settings', label: 'Cài đặt', icon: Settings },
             { id: 'settings', label: 'Cài đặt', icon: Settings },
             { id: 'attendance', label: 'Chấm công', icon: Scan },
             { id: 'admin', label: 'Quản trị', icon: Shield }
@@ -87,20 +97,28 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabChange }) => {
 
             {/* User Profile */}
             <div className="flex items-center gap-3 px-2">
-                <div className="w-10 h-10 rounded-full border-2 border-blue-500 p-0.5">
+                <div className="w-10 h-10 rounded-full border-2 border-blue-500 p-0.5 shrink-0">
                     <img
                         src={user?.photoURL || `https://api.dicebear.com/7.x/avataaars/svg?seed=${user?.displayName || 'User'}`}
                         alt="Avatar"
                         className="w-full h-full rounded-full object-cover bg-amber-50"
                     />
                 </div>
-                <div className="flex flex-col text-left">
-                    <span className="text-[13px] font-black text-slate-900 truncate max-w-[120px]">{user?.displayName || 'Khách'}</span>
+                <div className="flex flex-col text-left min-w-0">
+                    <span className="text-[13px] font-black text-slate-900 truncate">{user?.displayName || 'Khách'}</span>
                     <span className="text-[10px] text-blue-500 font-extrabold uppercase tracking-tighter">
                         {user?.role === 'admin' ? 'Quản trị viên' : 'Thành viên'}
                     </span>
                 </div>
+                <button
+                    onClick={handleLogout}
+                    className="ml-auto p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors shrink-0"
+                    title="Đăng xuất"
+                >
+                    <LogOut size={20} />
+                </button>
             </div>
         </aside>
     );
 };
+

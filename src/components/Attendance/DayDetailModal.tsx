@@ -1,35 +1,15 @@
 import React, { useEffect, useState } from 'react';
-import { X, Clock, CheckCircle2, LogOut, AlertCircle, MapPin, FileText } from 'lucide-react';
+import { X, Clock, CheckCircle2, LogOut, AlertCircle, MapPin, FileText, Briefcase } from 'lucide-react';
 import { getGoogleMapsLink } from '../../utils/locationUtils';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../lib/firebase';
 import { useAuthStore } from '../../store/useAuthStore';
+import type { DailyAttendance, AttendanceRequest } from '../../types';
+import { getWorkDayStatus } from '../../utils/attendanceUtils';
 
 interface DayDetailModalProps {
     date: Date;
-    attendance?: {
-        checkInTime: any;
-        checkOutTime: any;
-        status: string;
-        details: {
-            lateMinutes: number;
-            earlyLeaveMinutes: number;
-            totalWorkHours: number;
-        };
-        checkInLocation?: {
-            latitude: number;
-            longitude: number;
-            distanceFromOffice: number;
-            isWithinRadius: boolean;
-        };
-        checkOutLocation?: {
-            latitude: number;
-            longitude: number;
-            distanceFromOffice: number;
-            isWithinRadius: boolean;
-        };
-        note?: string; // Add note support
-    };
+    attendance?: DailyAttendance;
     onClose: () => void;
 }
 
@@ -38,26 +18,29 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({ date, attendance
     const userId = user?.uid;
     const checkIn = attendance?.checkInTime?.toDate ? attendance.checkInTime.toDate() : null;
     const checkOut = attendance?.checkOutTime?.toDate ? attendance.checkOutTime.toDate() : null;
-    const [request, setRequest] = useState<any>(null);
+    const [requests, setRequests] = useState<AttendanceRequest[]>([]);
 
     useEffect(() => {
-        const fetchRequest = async () => {
+        const fetchRequests = async () => {
             if (!userId) return;
-            const dateStr = date.toISOString().split('T')[0];
+            // Handle date offset timezone issues 
+            const offset = date.getTimezoneOffset();
+            const localDate = new Date(date.getTime() - (offset * 60 * 1000));
+            const dateStr = localDate.toISOString().split('T')[0];
+
             const q = query(
                 collection(db, 'attendance_requests'),
                 where('userId', '==', userId),
                 where('date', '==', dateStr)
             );
             const snap = await getDocs(q);
-            if (!snap.empty) {
-                setRequest(snap.docs[0].data());
-            } else {
-                setRequest(null);
-            }
+            const fetchedRequests = snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as AttendanceRequest));
+            setRequests(fetchedRequests);
         };
-        fetchRequest();
+        fetchRequests();
     }, [date, userId]);
+
+    const workDayStatus = getWorkDayStatus(attendance, requests);
 
     const getRequestStatusColor = (status: string) => {
         if (status === 'approved') return 'bg-green-100 text-green-700 border-green-200';
@@ -97,18 +80,18 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({ date, attendance
                     <div className="space-y-4">
 
                         {/* Status / Request Info */}
-                        {request && (
-                            <div className={`p-4 rounded-xl border flex items-center gap-3 ${getRequestStatusColor(request.status)}`}>
+                        {requests.length > 0 && requests.map(req => (
+                            <div key={req.id} className={`p-4 rounded-xl border flex items-center gap-3 ${getRequestStatusColor(req.status)}`}>
                                 <FileText className="w-5 h-5" />
                                 <div>
                                     <p className="text-xs font-bold uppercase">Yêu cầu giải trình</p>
                                     <p className="font-bold text-sm">
-                                        {getRequestStatusText(request.status)}
+                                        {getRequestStatusText(req.status)}
                                     </p>
-                                    <p className="text-xs mt-1 opacity-80 line-clamp-1">Lý do: {request.reason}</p>
+                                    <p className="text-xs mt-1 opacity-80 line-clamp-1">Lý do: {req.reason}</p>
                                 </div>
                             </div>
-                        )}
+                        ))}
 
                         {/* Note in Attendance */}
                         {attendance.note && (
@@ -131,10 +114,10 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({ date, attendance
                                     </p>
                                 </div>
                             </div>
-                            {attendance.details.lateMinutes > 0 && (
+                            {attendance.details?.lateMinutes > 0 && (
                                 <div className="mt-2 flex items-center gap-2 text-amber-600 text-sm">
                                     <AlertCircle className="w-4 h-4" />
-                                    <span className="font-bold">Trễ {attendance.details.lateMinutes} phút</span>
+                                    <span className="font-bold">Trễ {attendance.details?.lateMinutes} phút</span>
                                 </div>
                             )}
                         </div>
@@ -152,24 +135,41 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({ date, attendance
                                     </p>
                                 </div>
                             </div>
-                            {attendance.details.earlyLeaveMinutes > 0 && (
+                            {attendance.details?.earlyLeaveMinutes > 0 && (
                                 <div className="mt-2 flex items-center gap-2 text-orange-600 text-sm">
                                     <AlertCircle className="w-4 h-4" />
-                                    <span className="font-bold">Về sớm {attendance.details.earlyLeaveMinutes} phút</span>
+                                    <span className="font-bold">Về sớm {attendance.details?.earlyLeaveMinutes} phút</span>
                                 </div>
                             )}
                         </div>
 
-                        {/* Total hours */}
-                        <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
-                            <div className="flex items-center justify-center gap-2 mb-1">
-                                <Clock className="w-4 h-4 text-slate-500" />
-                                <p className="text-xs font-bold text-slate-500 uppercase">Tổng giờ làm</p>
+                        {/* Total hours & Work Day Status */}
+                        <div className="grid grid-cols-2 gap-3">
+                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 text-center">
+                                <div className="flex items-center justify-center gap-2 mb-1">
+                                    <Clock className="w-4 h-4 text-slate-500" />
+                                    <p className="text-xs font-bold text-slate-500 uppercase">Tổng giờ</p>
+                                </div>
+                                <p className="text-2xl font-black text-slate-900">
+                                    {attendance.details?.totalWorkHours || 0}h
+                                </p>
                             </div>
-                            <p className="text-3xl font-black text-blue-600">
-                                {attendance.details.totalWorkHours || 0}h
-                            </p>
+
+                            {/* WORK DAY STATUS */}
+                            <div className={`p-4 rounded-xl border text-center flex flex-col items-center justify-center ${workDayStatus.color} ${workDayStatus.borderColor}`}>
+                                <div className="flex items-center justify-center gap-2 mb-1">
+                                    <Briefcase className={`w-4 h-4 ${workDayStatus.textColor}`} />
+                                    <p className={`text-xs font-bold uppercase ${workDayStatus.textColor}`}>Công</p>
+                                </div>
+                                <p className={`text-2xl font-black ${workDayStatus.textColor} leading-none`}>
+                                    {workDayStatus.credit}
+                                </p>
+                                <p className={`text-[10px] uppercase font-bold mt-1 ${workDayStatus.textColor} opacity-80`}>
+                                    {workDayStatus.label}
+                                </p>
+                            </div>
                         </div>
+
 
                         {/* Location Info */}
                         {(attendance.checkInLocation || attendance.checkOutLocation) && (
@@ -217,18 +217,18 @@ export const DayDetailModal: React.FC<DayDetailModalProps> = ({ date, attendance
                     </div>
                 ) : (
                     <div className="space-y-4">
-                        {request ? (
-                            <div className={`p-4 rounded-xl border flex items-center gap-3 ${getRequestStatusColor(request.status)}`}>
+                        {requests.length > 0 && requests.map(req => (
+                            <div key={req.id} className={`p-4 rounded-xl border flex items-center gap-3 ${getRequestStatusColor(req.status)}`}>
                                 <FileText className="w-5 h-5" />
                                 <div>
                                     <p className="text-xs font-bold uppercase">Yêu cầu giải trình</p>
                                     <p className="font-bold text-sm">
-                                        {getRequestStatusText(request.status)}
+                                        {getRequestStatusText(req.status)}
                                     </p>
-                                    <p className="text-xs mt-1 opacity-80 line-clamp-1">Lý do: {request.reason}</p>
+                                    <p className="text-xs mt-1 opacity-80 line-clamp-1">Lý do: {req.reason}</p>
                                 </div>
                             </div>
-                        ) : null}
+                        ))}
 
                         <div className="text-center py-8">
                             <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
