@@ -48,7 +48,11 @@ export const FaceCheckIn: React.FC = () => {
             setUserDescriptor(new Float32Array(userDoc.data().faceDescriptor));
 
             // 2. Check Today's Attendance Record
-            const today = new Date().toISOString().split('T')[0]; // "YYYY-MM-DD"
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            const today = `${year}-${month}-${day}`;
             const recordId = `${userId}_${today}`;
             const recordDoc = await getDoc(doc(db, 'attendance_days', recordId));
 
@@ -168,7 +172,10 @@ export const FaceCheckIn: React.FC = () => {
     const handleProccessAttendance = async () => {
         if (!userId) return;
         const now = new Date();
-        const today = now.toISOString().split('T')[0];
+        const year = now.getFullYear();
+        const month = String(now.getMonth() + 1).padStart(2, '0');
+        const day = String(now.getDate()).padStart(2, '0');
+        const today = `${year}-${month}-${day}`;
         const recordId = `${userId}_${today}`;
 
         let notifMessage = "";

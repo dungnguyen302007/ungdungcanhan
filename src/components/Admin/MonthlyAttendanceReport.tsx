@@ -47,7 +47,7 @@ export const MonthlyAttendanceReport: React.FC = () => {
             const d = new Date(year, month, i + 1);
             return {
                 day: i + 1,
-                dateStr: d.toISOString().split('T')[0],
+                dateStr: `${year}-${String(month + 1).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`,
                 isWeekend: d.getDay() === 0 || d.getDay() === 6
             };
         });

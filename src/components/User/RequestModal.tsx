@@ -17,7 +17,13 @@ export const RequestModal: React.FC<RequestModalProps> = ({ isOpen, onClose }) =
     const [activeTab, setActiveTab] = useState<'create' | 'history'>('create');
     const [history, setHistory] = useState<any[]>([]);
     const [formData, setFormData] = useState({
-        date: new Date().toISOString().split('T')[0],
+        date: (() => {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        })(),
         type: 'late_in',
         reason: ''
     });
