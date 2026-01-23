@@ -16,8 +16,8 @@ echo    VPS IP: %VPS_IP%
 echo    Domain: %DOMAIN%
 echo    Deploy Path: %VPS_PATH%
 echo.
-echo ⚠️  You will need to enter VPS password: V%%9-a6!%%MjA033$
-echo.
+echo ⚠️  You will need to enter VPS password when prompted
+echo    (Password won't be visible while typing)
 pause
 
 REM Step 1: Check if build exists
