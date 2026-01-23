@@ -26,8 +26,16 @@ export const AttendanceHistory: React.FC = () => {
             try {
                 // 1. Fetch current month's records for stats
                 const now = new Date();
-                const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0];
-                const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0];
+                const y = now.getFullYear();
+                const m = now.getMonth();
+                const start = new Date(y, m, 1);
+                const end = new Date(y, m + 1, 0);
+
+                // Manual format YYYY-MM-DD
+                const format = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+                const startOfMonth = format(start);
+                const endOfMonth = format(end);
 
                 // Fetch Attendance and Requests in parallel
                 const qStats = query(

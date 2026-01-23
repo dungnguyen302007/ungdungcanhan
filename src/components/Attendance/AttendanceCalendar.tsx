@@ -46,8 +46,9 @@ export const AttendanceCalendar: React.FC = () => {
         if (!user) return;
         setLoading(true);
         try {
-            const startDate = new Date(currentYear, currentMonth, 1).toISOString().split('T')[0];
-            const endDate = new Date(currentYear, currentMonth + 1, 0).toISOString().split('T')[0];
+            const format = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+            const startDate = format(new Date(currentYear, currentMonth, 1));
+            const endDate = format(new Date(currentYear, currentMonth + 1, 0));
 
             const q = query(
                 collection(db, 'attendance_days'),

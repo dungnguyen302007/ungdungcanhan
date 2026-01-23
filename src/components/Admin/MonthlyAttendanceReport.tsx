@@ -316,7 +316,13 @@ export const MonthlyAttendanceReport: React.FC = () => {
             {/* Day Detail Modal */}
             {selectedDay && (() => {
                 const user = reportData.find(r => r.userId === selectedDay.userId);
-                const dateKey = selectedDay.date.toISOString().split('T')[0];
+                const dateKey = (() => {
+                    const localDate = selectedDay.date;
+                    const year = localDate.getFullYear();
+                    const month = String(localDate.getMonth() + 1).padStart(2, '0');
+                    const day = String(localDate.getDate()).padStart(2, '0');
+                    return `${year}-${month}-${day}`;
+                })();
                 const attendanceData = user?.attendance[dateKey];
 
                 // Convert to DailyAttendance format
