@@ -416,6 +416,9 @@ function App() {
           </main>
 
         </div>
+        <div className="text-center py-2 text-[10px] text-slate-300 bg-slate-50">
+          v2.1 (GitHub Fixed) - {userId?.slice(0, 8)}
+        </div>
       </AuthLayout>
       <GlobalChatListener />
       <Toaster position="top-right" />
