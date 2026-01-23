@@ -34,32 +34,7 @@ if not exist "dist" (
 echo ✅ Build folder found
 echo.
 
-REM Step 2: Upload setup script
-echo [1/3] 📤 Uploading setup script to VPS...
-scp -P %VPS_PORT% vps-setup.sh %VPS_USER%@%VPS_IP%:/root/
-if errorlevel 1 (
-    echo ❌ Failed to upload setup script
-    pause
-    exit /b 1
-)
-echo ✅ Setup script uploaded
-echo.
-
-REM Step 3: Run setup script on VPS
-echo [2/3] ⚙️  Running setup script on VPS...
-echo.
-echo 📝 The script will:
-echo    - Create /var/www/hethong directory
-echo    - Configure Nginx for %DOMAIN%
-echo    - Setup SSL certificate
-echo.
-ssh -p %VPS_PORT% %VPS_USER%@%VPS_IP% "chmod +x /root/vps-setup.sh && bash /root/vps-setup.sh"
-if errorlevel 1 (
-    echo ⚠️  Setup script had issues (check output above)
-    echo    You may need to run it manually
-    pause
-)
-echo.
+REM Steps 2 & 3 removed as we are using Docker setup now
 
 REM Step 4: Upload application files
 echo [3/3] 📦 Uploading application files...
@@ -82,15 +57,14 @@ echo 🔧 Setting correct permissions...
 ssh -p %VPS_PORT% %VPS_USER%@%VPS_IP% "chmod -R 755 %VPS_PATH% && chown -R www-data:www-data %VPS_PATH%"
 echo.
 
-REM Step 6: Reload Nginx
-echo 🔄 Reloading Nginx...
-ssh -p %VPS_PORT% %VPS_USER%@%VPS_IP% "nginx -t && systemctl reload nginx"
+REM Step 6: Restart Docker Container (Optional)
+echo 🔄 Restarting Web Container...
+ssh -p %VPS_PORT% %VPS_USER%@%VPS_IP% "docker restart hethong_web"
 if errorlevel 1 (
-    echo ⚠️  Nginx reload had issues
+    echo ⚠️  Could not restart container (check manually if needed)
 ) else (
-    echo ✅ Nginx reloaded
+    echo ✅ Container restarted
 )
-echo.
 
 echo ========================================
 echo   ✅ Deployment Complete!
